@@ -1,0 +1,191 @@
+сборка ядра под oneplus5t
+  
+  
+  
+CROSS COMPILER
+
+sudo apt-get install gcc-aarch64-linux-gnu
+
+git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9
+
+
+
+ПЕРЕМЕННЫЕ
+
+export CROSS_COMPILE=aarch64-linux-gnu-
+export ARCH=arm64
+export SUBARCH=arm64
+
+использовал линковщик гугла (в Makefile), со стандартным не собирается
+LD		= /path/cross_compiler/aarch64-linux-android-4.9/bin/aarch64-linux-android-ld
+
+ 
+
+СБОРКА
+
+make O=out clean
+make O=out mrproper
+make O=out msmcortex-perf_defconfig
+make O=out -j8
+
+
+
+
+ИСХОДНИКИ
+
+https://github.com/OnePlusOSS/android_kernel_oneplus_msm8998.git
+
+
+
+
+ПАТЧ ЧТОБЫ СОБИРАЛОСЬ
+
+drivers/bluetooth/btfm_slim.c 
+FROM
+#include <btfm_slim.h>
+#include <btfm_slim_wcn3990.h>
+TO
+#include "btfm_slim.h"
+#include "btfm_slim_wcn3990.h"
+
+drivers/bluetooth/btfm_slim_codec.c
+FROM
+#include <btfm_slim.h>
+TO
+#include "btfm_slim.h"
+
+drivers/bluetooth/btfm_slim_wcn3990.c 
+FROM
+#include <btfm_slim.h>
+#include <btfm_slim_wcn3990.h>
+TO
+#include "btfm_slim.h"
+#include "btfm_slim_wcn3990.h"
+
+drivers/bluetooth/btfm_slim_wcn3990.h
+FROM
+#include <btfm_slim.h>
+TO
+#include "btfm_slim.h"
+
+drivers/gpu/msm/Makefile
+FROM
+ccflags-y := -Idrivers/staging/android
+TO
+ccflags-y := -Idrivers/staging/android -I$(src)
+
+drivers/gpu/msm/kgsl_events.c 
+FROM
+#include <kgsl_device.h>
+TO
+#include "kgsl_device.h"
+
+drivers/media/platform/msm/camera_v2/common/cam_smmu_api.c
+FROM
+#include <msm_camera_tz_util.h>
+TO
+#include "msm_camera_tz_util.h"
+
+drivers/media/platform/msm/camera_v2/sensor/msm_sensor.h
+FROM
+#include "msm_camera_i2c.h"
+#include "msm_camera_dt_util.h"
+#include "msm_sd.h"
+TO
+#include "io/msm_camera_i2c.h"
+#include "io/msm_camera_dt_util.h"
+#include "../msm_sd.h"
+
+drivers/net/ethernet/msm/Makefile
+ADD
+CFLAGS_rndis_ipa.o := -I$(src)
+
+drivers/platform/msm/ipa/ipa_v2/Makefile
+ADD
+CFLAGS_ipa.o := -I$(src)
+
+drivers/platform/msm/ipa/ipa_v3/Makefile
+ADD
+CFLAGS_ipa.o := -I$(src)
+
+drivers/platform/msm/mhi/mhi_ssr.c
+FROM
+#include <mhi_sys.h>
+#include <mhi.h>
+#include <mhi_bhi.h>
+#include <mhi_hwio.h>
+TO
+#include "mhi_sys.h"
+#include "mhi.h"
+#include "mhi_bhi.h"
+#include "mhi_hwio.h"
+
+drivers/power/supply/qcom/qpnp-smbcharger.c
+FROM
+#include "pmic-voter.h"
+TO
+#include <linux/pmic-voter.h>
+
+drivers/soc/qcom/Makefile
+ADD
+CFLAGS_tracer_pkt.o := -I$(src)
+
+include/trace/events/msm_cam.h
+FROM
+#include "msm_isp.h"
+TO
+#include "../../../drivers/media/platform/msm/camera_v2/isp/msm_isp.h"
+
+kernel/printk/printk.c
+FROM
+static unsigned long __initdata new_log_buf_len;
+TO
+static unsigned long __init new_log_buf_len;
+
+security/pfe/pfk_ecryptfs.c
+FROM
+void __exit pfk_ecryptfs_deinit(void) (в определении)
+TO
+void pfk_ecryptfs_deinit(void)
+
+security/pfe/pfk_ecryptfs.h
+FROM
+void __exit pfk_ecryptfs_deinit(void); (в объявлении)
+TO
+void pfk_ecryptfs_deinit(void);
+
+security/pfe/pfk_ext4.c
+FROM
+void __exit pfk_ext4_deinit(void) (в определении)
+TO
+void pfk_ext4_deinit(void)
+
+security/pfe/pfk_ext4.h
+FROM
+void __exit pfk_ext4_deinit(void); (в объявлении)
+TO
+void pfk_ext4_deinit(void);
+
+sound/soc/msm/msm8996.c
+FROM
+#include <device_event.h>
+TO
+#include "device_event.h"
+
+sound/soc/msm/msm8998.c
+FROM
+#include <device_event.h>
+TO
+#include "device_event.h"
+
+
+
+
+
+
+
+
+
+
+
+
