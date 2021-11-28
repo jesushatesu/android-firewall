@@ -81,6 +81,60 @@ struct sock *nl_sk = NULL;
 int inputPid;
 extern struct net init_net;
 
+
+//TODO: вместо принтов формировать строку или структуру, которую будем отправлять нашему приложению через сокет
+void print_skb_info(struct sk_buff *skb)
+{
+	//struct iphdr *nh;
+	struct iphdr *ip;
+	
+	/*
+	printk(KERN_INFO "skb->len: %d|| skb->protocol: %d|| skb->dev->name: %s|| skb->dev->type: %u||",
+				skb->len, ntohs(skb->protocol), skb->dev->name, skb->dev->type);*/
+	printk(KERN_INFO "nmjfilter -____- name: %s || type: %u || flags: %u",
+				skb->dev->name, skb->dev->type, skb->dev->flags);
+				
+	switch (skb->protocol) {
+	case ETH_P_IPV6:
+		printk("skb MAC info IPv6 over bluebook");
+		break;
+	case ETH_P_MAP:
+		printk("skb MAC info Qualcomm multiplexing and aggregation protocol");
+		break;
+	case ETH_P_IP:
+		printk("skb MAC info Internet Protocol packet");
+	}
+				
+	ip = (struct iphdr *)skb->data;
+	printk(KERN_INFO "skb network info - protocol: %d, saddr: %d.%d.%d.%d, daddr: %d.%d.%d.%d ",ip->protocol, ntohl(ip->saddr)>>24, (ntohl(ip->saddr)>>16)&0x00FF,(ntohl(ip->saddr)>>8)&0x0000FF, (ntohl(ip->saddr))&0x000000FF, ntohl(ip->daddr)>>24, (ntohl(ip->daddr)>>16)&0x00FF,(ntohl(ip->daddr)>>8)&0x0000FF, (ntohl(ip->daddr))&0x000000FF);		
+	
+	switch (ip->protocol) {
+	case IPPROTO_ICMP:
+		printk("skb transport info ICMP");
+		break;
+	case IPPROTO_TCP:
+		printk("skb transport info TCP");
+		break;
+	case IPPROTO_UDP:
+		printk("skb transport info UDP");
+	}
+	
+	/*
+	struct iphdr* iph = ip_hdr(skb);
+	
+	iph->saddr;
+	iph->daddr;
+	*/
+	
+	/*nh = (struct iphdr *)skb_network_header(skb);
+	if (nh != NULL){
+		printk(KERN_INFO "srcIP: %u|| dstIP: %pIS|| ",
+				nh->saddr, nh->daddr);
+	}*/
+	
+	skb_free(skb);
+}
+
 static void nl_recv_msg(struct sk_buff *skb)
 {
 
