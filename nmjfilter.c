@@ -95,29 +95,49 @@ void print_skb_info(struct sk_buff *skb)
 				skb->dev->name, skb->dev->type, skb->dev->flags);
 				
 	switch (skb->protocol) {
-	case ETH_P_IPV6:
+	case htons(ETH_P_IPV6):
 		printk("skb MAC info IPv6 over bluebook");
 		break;
-	case ETH_P_MAP:
+	case htons(ETH_P_MAP):
 		printk("skb MAC info Qualcomm multiplexing and aggregation protocol");
 		break;
-	case ETH_P_IP:
+	case htons(ETH_P_IP):
 		printk("skb MAC info Internet Protocol packet");
 	}
-				
-	ip = (struct iphdr *)skb->data;
-	printk(KERN_INFO "skb network info - protocol: %d, saddr: %d.%d.%d.%d, daddr: %d.%d.%d.%d ",ip->protocol, ntohl(ip->saddr)>>24, (ntohl(ip->saddr)>>16)&0x00FF,(ntohl(ip->saddr)>>8)&0x0000FF, (ntohl(ip->saddr))&0x000000FF, ntohl(ip->daddr)>>24, (ntohl(ip->daddr)>>16)&0x00FF,(ntohl(ip->daddr)>>8)&0x0000FF, (ntohl(ip->daddr))&0x000000FF);		
 	
-	switch (ip->protocol) {
-	case IPPROTO_ICMP:
-		printk("skb transport info ICMP");
-		break;
-	case IPPROTO_TCP:
-		printk("skb transport info TCP");
-		break;
-	case IPPROTO_UDP:
-		printk("skb transport info UDP");
+	ip = (struct iphdr *)skb_network_header(skb);
+	//ip = (struct iphdr *)skb->data;
+	if (ip->version == 4)
+	{
+		long saddr = ntohl(ip->saddr);
+		long daddr = ntohl(ip->daddr);
+	
+		if (ip->protocol == IPPROTO_TCP)
+		{
+			/* Задаем смещение в байтах для указателя на TCP заголовок */
+			/* ip->ihl - длина IP заголовка в 32-битных словах */
+			skb_set_transport_header(skb, ip->ihl * 4);
+			/* Сохраняем указатель на структуру заголовка TCP */
+			tcp = (struct tcphdr *)skb_transport_header(skb);
+			
+			
+			/* обработка tcp пакета*/	    
+			
+			
+			
+	    }
+	    if (ip->protocol == IPPROTO_UDP)
+		{
+			
+		}
+		if (ip->protocol == IPPROTO_ICMP)
+		{
+			
+		}
+		
 	}
+	//printk(KERN_INFO "skb network info - protocol: %d, saddr: %d.%d.%d.%d, daddr: %d.%d.%d.%d ",ip->protocol, ntohl(ip->saddr)>>24, (ntohl(ip->saddr)>>16)&0x00FF,(ntohl(ip->saddr)>>8)&0x0000FF, (ntohl(ip->saddr))&0x000000FF, ntohl(ip->daddr)>>24, (ntohl(ip->daddr)>>16)&0x00FF,(ntohl(ip->daddr)>>8)&0x0000FF, (ntohl(ip->daddr))&0x000000FF);		
+	
 	
 	/*
 	struct iphdr* iph = ip_hdr(skb);
@@ -148,6 +168,8 @@ static void nl_recv_msg(struct sk_buff *skb)
 
     //some things
 }
+
+
 
 static void nl_send_msg(char *msg, uint16_t len)
 {
