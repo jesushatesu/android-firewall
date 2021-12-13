@@ -87,7 +87,7 @@ void print_skb_info(struct sk_buff *skb)
 {
 	struct iphdr *ip;
 	struct nmj_buff *nmj;
-	nmj = kmalloc(sizeof(struct nmj_buff), GFP_USER)
+	nmj = kmalloc(sizeof(struct nmj_buff), GFP_USER);
 	
 	strcpy(nmj->name, skb->dev->name);
 	
@@ -109,6 +109,9 @@ void print_skb_info(struct sk_buff *skb)
 	
 	ip = (struct iphdr *)skb_network_header(skb);
 	
+	nmj->protocol = ip->protocol;
+	nmj->ip_version = ip->version;
+	
 	if (ip->version == 4)
 	{
 		nmj->saddr = ntohl(ip->saddr);
@@ -125,7 +128,7 @@ void print_skb_info(struct sk_buff *skb)
 			/* Сохраняем указатель на структуру заголовка TCP */
 			tcp = (struct tcphdr *)skb_transport_header(skb);
 			
-			nmj->suorce = tcp->source;
+			nmj->source = tcp->source;
 			nmj->dest = tcp->dest;
 			/*
 			printk(KERN_INFO "nmjfilter TCP - protocol: %d, saddr: %d.%d.%d.%d:%d, daddr: %d.%d.%d.%d:%d ",ip->protocol, saddr>>24, (saddr>>16)&0x00FF,(saddr>>8)&0x0000FF, (saddr)&0x000000FF, sport, daddr>>24, (daddr>>16)&0x00FF,(daddr>>8)&0x0000FF, (daddr)&0x000000FF, dport);*/
@@ -138,7 +141,7 @@ void print_skb_info(struct sk_buff *skb)
 			skb_set_transport_header(skb, ip->ihl * 4);
 			udp = (struct udphdr *)skb_transport_header(skb);
 			
-			nmj->suorce = udp->source;
+			nmj->source = udp->source;
 			nmj->dest = udp->dest;
 			/*
 			printk(KERN_INFO "nmjfilter UDP - protocol: %d, saddr: %d.%d.%d.%d:%d, daddr: %d.%d.%d.%d:%d ",ip->protocol, saddr>>24, (saddr>>16)&0x00FF,(saddr>>8)&0x0000FF, (saddr)&0x000000FF, sport, daddr>>24, (daddr>>16)&0x00FF,(daddr>>8)&0x0000FF, (daddr)&0x000000FF, dport);*/
