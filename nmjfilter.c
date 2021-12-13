@@ -112,8 +112,7 @@ void print_skb_info(struct sk_buff *skb)
 	nmj->protocol = ip->protocol;
 	nmj->ip_version = ip->version;
 	
-	if (ip->version == 4)
-	{
+
 		nmj->saddr = ntohl(ip->saddr);
 		nmj->daddr = ntohl(ip->daddr);
 	
@@ -130,8 +129,7 @@ void print_skb_info(struct sk_buff *skb)
 			
 			nmj->source = tcp->source;
 			nmj->dest = tcp->dest;
-			/*
-			printk(KERN_INFO "nmjfilter TCP - protocol: %d, saddr: %d.%d.%d.%d:%d, daddr: %d.%d.%d.%d:%d ",ip->protocol, saddr>>24, (saddr>>16)&0x00FF,(saddr>>8)&0x0000FF, (saddr)&0x000000FF, sport, daddr>>24, (daddr>>16)&0x00FF,(daddr>>8)&0x0000FF, (daddr)&0x000000FF, dport);*/
+			printk(KERN_INFO "nmj_buff TCP - name: %s, protocol: %d, ip_version: %d, saddr: %d.%d.%d.%d:%d, daddr: %d.%d.%d.%d:%d ", nmj->name, nmj->protocol, nmj->ip_version, nmj->saddr>>24, (nmj->saddr>>16)&0x00FF,(nmj->saddr>>8)&0x0000FF, (nmj->saddr)&0x000000FF, nmj->source, nmj->daddr>>24, (nmj->daddr>>16)&0x00FF,(nmj->daddr>>8)&0x0000FF, (nmj->daddr)&0x000000FF, nmj->dest);
 			
 	    }
 	    if (ip->protocol == IPPROTO_UDP)
@@ -143,17 +141,14 @@ void print_skb_info(struct sk_buff *skb)
 			
 			nmj->source = udp->source;
 			nmj->dest = udp->dest;
-			/*
-			printk(KERN_INFO "nmjfilter UDP - protocol: %d, saddr: %d.%d.%d.%d:%d, daddr: %d.%d.%d.%d:%d ",ip->protocol, saddr>>24, (saddr>>16)&0x00FF,(saddr>>8)&0x0000FF, (saddr)&0x000000FF, sport, daddr>>24, (daddr>>16)&0x00FF,(daddr>>8)&0x0000FF, (daddr)&0x000000FF, dport);*/
+			printk(KERN_INFO "nmj_buff UDP - name: %s, protocol: %d, ip_version: %d, saddr: %d.%d.%d.%d:%d, daddr: %d.%d.%d.%d:%d ", nmj->name, nmj->protocol, nmj->ip_version, nmj->saddr>>24, (nmj->saddr>>16)&0x00FF,(nmj->saddr>>8)&0x0000FF, (nmj->saddr)&0x000000FF, nmj->source, nmj->daddr>>24, (nmj->daddr>>16)&0x00FF,(nmj->daddr>>8)&0x0000FF, (nmj->daddr)&0x000000FF, nmj->dest);
 		}
 		if (ip->protocol == IPPROTO_ICMP)
 		{
-		/*
-			printk(KERN_INFO "nmjfilter ICMP - protocol: %d, saddr: %d.%d.%d.%d, daddr: %d.%d.%d.%d ",ip->protocol, saddr>>24, (saddr>>16)&0x00FF,(saddr>>8)&0x0000FF, (saddr)&0x000000FF, daddr>>24, (daddr>>16)&0x00FF,(daddr>>8)&0x0000FF, (daddr)&0x000000FF);*/
+		printk(KERN_INFO "nmj_buff ICMP - name: %s, protocol: %d, ip_version: %d, saddr: %d.%d.%d.%d, daddr: %d.%d.%d.%d", nmj->name, nmj->protocol, nmj->ip_version, nmj->saddr>>24, (nmj->saddr>>16)&0x00FF,(nmj->saddr>>8)&0x0000FF, (nmj->saddr)&0x000000FF, nmj->daddr>>24, (nmj->daddr>>16)&0x00FF,(nmj->daddr>>8)&0x0000FF, (nmj->daddr)&0x000000FF);
 		}
 		
-	}
-	printk(KERN_INFO "nmj_buff - name: %s, protocol: %d, ip_version: %d, saddr: %d.%d.%d.%d:%d, daddr: %d.%d.%d.%d:%d ", nmj->name, nmj->protocol, nmj->ip_version, nmj->saddr>>24, (nmj->saddr>>16)&0x00FF,(nmj->saddr>>8)&0x0000FF, (nmj->saddr)&0x000000FF, nmj->source, nmj->daddr>>24, (nmj->daddr>>16)&0x00FF,(nmj->daddr>>8)&0x0000FF, (nmj->daddr)&0x000000FF, nmj->dest);
+
 }
 
 static void nl_recv_msg(struct sk_buff *skb)

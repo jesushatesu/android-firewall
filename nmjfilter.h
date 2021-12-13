@@ -10,7 +10,7 @@ struct nmj_buff {
 	char			name[IFNAMSIZ];
 	__be16			protocol;
 	__u8	ihl:4,
-		version:4;
+		ip_version:4;
 	__be32	saddr;
 	__be32	daddr;
 	__be16	source;
