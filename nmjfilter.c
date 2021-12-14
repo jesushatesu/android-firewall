@@ -75,7 +75,7 @@
 #include <linux/tcp.h>
 #include <net/tcp.h>
 
-//#include "nmjfilter.h" потом добавить
+#include "nmjfilter.h"
 
 struct sock *nl_sk = NULL;
 int inputPid;
@@ -148,7 +148,7 @@ void print_skb_info(struct sk_buff *skb)
 		printk(KERN_INFO "nmj_buff ICMP - name: %s, protocol: %d, ip_version: %d, saddr: %d.%d.%d.%d, daddr: %d.%d.%d.%d", nmj->name, nmj->protocol, nmj->ip_version, nmj->saddr>>24, (nmj->saddr>>16)&0x00FF,(nmj->saddr>>8)&0x0000FF, (nmj->saddr)&0x000000FF, nmj->daddr>>24, (nmj->daddr>>16)&0x00FF,(nmj->daddr>>8)&0x0000FF, (nmj->daddr)&0x000000FF);
 		}
 		
-
+	nl_send_msg(nmj, sizeof(struct nmj_buff));
 }
 
 static void nl_recv_msg(struct sk_buff *skb)
@@ -167,19 +167,19 @@ static void nl_recv_msg(struct sk_buff *skb)
 
 
 
-static void nl_send_msg(char *msg, uint16_t len)
+static int nl_send_msg(void *msg, uint16_t len)
 {
     struct sk_buff *skb_out;
     struct nlmsghdr *nlh;
     int res;
 	
-    skb_out = nlmsg_new(len, GFP_ATOMIC);
+    skb_out = nlmsg_new(NLMSG_ALIGN(len + 1), GFP_ATOMIC);
     if (!skb_out) {
         printk(KERN_ERR "Failed to allocate new skb\n");
         return -1;
     }
 
-    nlh = nlmsg_put(skb_out, 0, 0, NLMSG_DONE, len, 0);
+    nlh = nlmsg_put(skb_out, 0, 1, NLMSG_DONE, len + 1, 0);
     if(nlh == NULL)
     {
         printk("nlmsg_put failaure \n");
@@ -187,10 +187,10 @@ static void nl_send_msg(char *msg, uint16_t len)
         return -1;
     }
     
-    memcpy(nlmsg_data(nlh), pbuf, len);
-    ret = netlink_unicast(nl_sk, skb_out, inputPid, MSG_DONTWAIT);
-    if (res < 0)
-        printk(KERN_INFO "Error while sending back to user\n");
+    memcpy(nlmsg_data(nlh), msg, len);
+    ret = netlink_multicast(nl_sk, skb_out, 0, MULTICAST_GROUP, GFP_KERNEL);
+    
+    return res;
 }
 
 static int __init nmjfilter_init(void)

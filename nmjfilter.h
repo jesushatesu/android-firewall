@@ -3,8 +3,13 @@
  *		этот файл добавится в net/core и будет использоваться для файла nmjfilter.c
  *		
  */
+#include <linux/kernel.h>
+#include <linux/netlink.h>
+#include <net/netlink.h>
+#include <net/net_namespace.h>
 
-#include <linux/types.h>
+#define NETLINK_NMJ 27
+#define MULTICAST_GROUP 21
 
 struct nmj_buff {
 	char			name[IFNAMSIZ];
