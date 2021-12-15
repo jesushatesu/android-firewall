@@ -1,15 +1,13 @@
 /*
  * 	
- *		этот файл добавится в net/core и будет использоваться для файла nmjfilter.c
+ *		этот файл добавляется в net/core и используется для файла nmjfilter.c и dev.c
  *		
  */
 #include <linux/kernel.h>
 #include <linux/netlink.h>
 #include <net/netlink.h>
 #include <net/net_namespace.h>
-
-#define NETLINK_NMJ 27
-#define MULTICAST_GROUP 21
+#include <net/genetlink.h>
 
 struct nmj_buff {
 	char			name[IFNAMSIZ];
@@ -22,12 +20,9 @@ struct nmj_buff {
 	__be16	dest;
 };
 
-struct sock *nl_sk = NULL;
-int inputPid;
-extern struct net init_net;
-
+static int register_nmjfamily(void);
+void nmj_genl_send_msg(char *msg);
 void print_skb_info(struct sk_buff *skb);
-static void nl_recv_msg(struct sk_buff *skb);
-static void nl_send_msg(char *msg, uint16_t len);
+static int receive_msg(struct sk_buff *skb, struct genl_info *info);
 
 static int __init nmjfilter_init(void);

@@ -1,0 +1,17 @@
+файл юзерспейса nl.c
+надо установить библиотеки
+sudo apt install libnl*
+коспилировать так
+gcc -o nl -I /usr/include/libnl3/ nl.c $(pkg-config --cflags --libs libnl-3.0 libnl-genl-3.0)
+
+
+но пока вылетает ошибка
+
+	jeez@nomorejesus:~/netlink$ ./nl					//запуск
+	The group is 15.									//информационное сообщение
+	321The kernel module sent a message.				//информационное сообщение
+	ATTR_NMJSKB: len:13 type:1 data:NMJ TEST			//полученное сообщение из ядра
+	*** stack smashing detected ***: terminated			//ошибка
+	Aborted (core dumped)								//ошибка
+
+

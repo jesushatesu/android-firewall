@@ -1,86 +1,135 @@
 /*
  * 	
- *		этот файл добавится в net/core и будет использоваться для отправки нужных данных о входящих или исходящих skb
+ *		этот файл добавляется в net/core и используется для отправки нужных данных о входящих или исходящих skb
  *		
  */
 
-//TODO:убрать лишние хидеры
-
 #include <asm/uaccess.h>
-#include <linux/bitops.h>
-#include <linux/capability.h>
-#include <linux/cpu.h>
 #include <linux/types.h>
 #include <linux/kernel.h>
-#include <linux/hash.h>
-#include <linux/slab.h>
-#include <linux/sched.h>
-#include <linux/mutex.h>
 #include <linux/string.h>
 #include <linux/mm.h>
 #include <linux/socket.h>
 #include <linux/sockios.h>
 #include <linux/errno.h>
-#include <linux/interrupt.h>
 #include <linux/if_ether.h>
 #include <linux/netdevice.h>
-#include <linux/etherdevice.h>
-#include <linux/ethtool.h>
-#include <linux/notifier.h>
 #include <linux/skbuff.h>
 #include <net/net_namespace.h>
 #include <net/sock.h>
 #include <linux/rtnetlink.h>
 #include <linux/netlink.h>
 #include <linux/stat.h>
-#include <net/dst.h>
-#include <net/dst_metadata.h>
-#include <net/pkt_sched.h>
-#include <net/checksum.h>
-#include <net/xfrm.h>
-#include <linux/highmem.h>
 #include <linux/init.h>
-#include <linux/module.h>
-#include <linux/netpoll.h>
-#include <linux/rcupdate.h>
-#include <linux/delay.h>
-#include <net/iw_handler.h>
-#include <asm/current.h>
-#include <linux/audit.h>
-#include <linux/dmaengine.h>
-#include <linux/err.h>
-#include <linux/ctype.h>
-#include <linux/if_arp.h>
-#include <linux/if_vlan.h>
 #include <linux/ip.h>
 #include <net/ip.h>
-#include <net/mpls.h>
-#include <linux/ipv6.h>
-#include <linux/in.h>
-#include <linux/jhash.h>
-#include <linux/random.h>
-#include <trace/events/napi.h>
-#include <trace/events/net.h>
-#include <trace/events/skb.h>
-#include <linux/pci.h>
 #include <linux/inetdevice.h>
-#include <linux/cpu_rmap.h>
-#include <linux/static_key.h>
-#include <linux/hashtable.h>
 #include <linux/vmalloc.h>
-#include <linux/if_macvlan.h>
-#include <linux/errqueue.h>
-#include <linux/hrtimer.h>
-#include <linux/netfilter_ingress.h>
 #include <linux/tcp.h>
 #include <net/tcp.h>
 
 #include "nmjfilter.h"
 
-struct sock *nl_sk = NULL;
-int inputPid;
-extern struct net init_net;
 
+/**
+ * Attributes are fields of data your messages will contain.
+ * The designers of Netlink really want you to use these instead of just dumping
+ * data to the packet payload... and I have really mixed feelings about it.
+ */
+enum attributes {
+        /*
+         * The first one has to be a throwaway empty attribute; I don't know
+         * why.
+         * If you remove it, ATTR_NMJSKB (the first one) stops working, because
+         * it then becomes the throwaway.
+         */
+        ATTR_UNSPEC,
+        ATTR_NMJSKB,
+
+        /* This must be last! */
+        __ATTR_MAX,
+};
+
+#define ATTR_MAX (__ATTR_MAX - 1)
+
+
+/**
+ * Here you can define some constraints for the attributes so Linux will
+ * validate them for you.
+ */
+static struct nla_policy nmjpolicy[ATTR_MAX + 1] = {
+                [ATTR_NMJSKB] = { .type = NLA_STRING, } //TODO: изменить аттрибут
+};
+
+/**
+ * This callback runs whenever the socket receives messages.
+ * We don't use it now, but Linux complains if we don't define it.
+ */
+static int receive_msg(struct sk_buff *skb, struct genl_info *info)
+{
+        printk(KERN_INFO "Received a message in kernelspace.\n");
+        return 0;
+}
+
+/**
+ * Message type codes. All you need is a hello sorta function, so that's what
+ * I'm defining.
+ */
+enum commands {
+		COMMAND_UNSPEC,
+        COMMAND_NMJ,
+        /* This must be last! */
+        __COMMAND_MAX,
+};
+
+#define COMMAND_MAX (__COMMAND_MAX - 1)
+
+enum nmj_grps {
+	NMJ_SCAN,
+
+};
+
+/**
+ * Actual message type definition.
+ */
+struct genl_ops nmj_ops[] = {
+		{
+                .cmd = COMMAND_NMJ,
+                .flags = 0,
+                .policy = nmjpolicy,
+                .doit = receive_msg,
+                .dumpit = NULL,
+		},
+};
+
+/**
+ * And more specifically, anyone who wants to hear messages you throw at
+ * specific multicast groups need to register themselves to the same multicast
+ * group, too.
+ */
+struct genl_multicast_group nmj_groups[] = {
+        [NMJ_SCAN] = { .name = "NMJgroup" },
+};
+
+
+/**
+ * A Generic Netlink family is a group of listeners who can and want to speak
+ * your language.
+ * Anyone who wants to hear your messages needs to register to the same family
+ * as you.
+ */
+struct genl_family nmj_family = {
+                .hdrsize = 0,
+                .name = "NMJfamily",
+                .policy = nmjpolicy,
+                .module = THIS_MODULE,
+                .version = 1,
+                .maxattr = ATTR_MAX,
+                .ops = nmj_ops,
+                .n_ops = ARRAY_SIZE(nmj_ops),
+                .mcgrps = nmj_groups,
+                .n_mcgrps = ARRAY_SIZE(nmj_groups),
+};
 
 
 void print_skb_info(struct sk_buff *skb)
@@ -90,22 +139,6 @@ void print_skb_info(struct sk_buff *skb)
 	nmj = kmalloc(sizeof(struct nmj_buff), GFP_USER);
 	
 	strcpy(nmj->name, skb->dev->name);
-	
-	/*
-	printk(KERN_INFO "nmjfilter -____- name: %s",
-				skb->dev->name);
-	
-				
-	switch (skb->protocol) {
-	case htons(ETH_P_IPV6):
-		printk("nmjfilter skb MAC info IPv6 over bluebook");
-		break;
-	case htons(ETH_P_MAP):
-		printk("nmjfilter skb MAC info Qualcomm multiplexing and aggregation protocol");
-		break;
-	case htons(ETH_P_IP):
-		printk("nmjfilter skb MAC info Internet Protocol packet");
-	}*/
 	
 	ip = (struct iphdr *)skb_network_header(skb);
 	
@@ -129,7 +162,7 @@ void print_skb_info(struct sk_buff *skb)
 			
 			nmj->source = tcp->source;
 			nmj->dest = tcp->dest;
-			printk(KERN_INFO "nmj_buff TCP - name: %s, protocol: %d, ip_version: %d, saddr: %d.%d.%d.%d:%d, daddr: %d.%d.%d.%d:%d ", nmj->name, nmj->protocol, nmj->ip_version, nmj->saddr>>24, (nmj->saddr>>16)&0x00FF,(nmj->saddr>>8)&0x0000FF, (nmj->saddr)&0x000000FF, nmj->source, nmj->daddr>>24, (nmj->daddr>>16)&0x00FF,(nmj->daddr>>8)&0x0000FF, (nmj->daddr)&0x000000FF, nmj->dest);
+			//printk(KERN_INFO "nmj_buff TCP - name: %s, protocol: %d, ip_version: %d, saddr: %d.%d.%d.%d:%d, daddr: %d.%d.%d.%d:%d ", nmj->name, nmj->protocol, nmj->ip_version, nmj->saddr>>24, (nmj->saddr>>16)&0x00FF,(nmj->saddr>>8)&0x0000FF, (nmj->saddr)&0x000000FF, nmj->source, nmj->daddr>>24, (nmj->daddr>>16)&0x00FF,(nmj->daddr>>8)&0x0000FF, (nmj->daddr)&0x000000FF, nmj->dest);
 			
 	    }
 	    if (ip->protocol == IPPROTO_UDP)
@@ -141,72 +174,85 @@ void print_skb_info(struct sk_buff *skb)
 			
 			nmj->source = udp->source;
 			nmj->dest = udp->dest;
-			printk(KERN_INFO "nmj_buff UDP - name: %s, protocol: %d, ip_version: %d, saddr: %d.%d.%d.%d:%d, daddr: %d.%d.%d.%d:%d ", nmj->name, nmj->protocol, nmj->ip_version, nmj->saddr>>24, (nmj->saddr>>16)&0x00FF,(nmj->saddr>>8)&0x0000FF, (nmj->saddr)&0x000000FF, nmj->source, nmj->daddr>>24, (nmj->daddr>>16)&0x00FF,(nmj->daddr>>8)&0x0000FF, (nmj->daddr)&0x000000FF, nmj->dest);
+			//printk(KERN_INFO "nmj_buff UDP - name: %s, protocol: %d, ip_version: %d, saddr: %d.%d.%d.%d:%d, daddr: %d.%d.%d.%d:%d ", nmj->name, nmj->protocol, nmj->ip_version, nmj->saddr>>24, (nmj->saddr>>16)&0x00FF,(nmj->saddr>>8)&0x0000FF, (nmj->saddr)&0x000000FF, nmj->source, nmj->daddr>>24, (nmj->daddr>>16)&0x00FF,(nmj->daddr>>8)&0x0000FF, (nmj->daddr)&0x000000FF, nmj->dest);
 		}
 		if (ip->protocol == IPPROTO_ICMP)
 		{
-		printk(KERN_INFO "nmj_buff ICMP - name: %s, protocol: %d, ip_version: %d, saddr: %d.%d.%d.%d, daddr: %d.%d.%d.%d", nmj->name, nmj->protocol, nmj->ip_version, nmj->saddr>>24, (nmj->saddr>>16)&0x00FF,(nmj->saddr>>8)&0x0000FF, (nmj->saddr)&0x000000FF, nmj->daddr>>24, (nmj->daddr>>16)&0x00FF,(nmj->daddr>>8)&0x0000FF, (nmj->daddr)&0x000000FF);
+		//printk(KERN_INFO "nmj_buff ICMP - name: %s, protocol: %d, ip_version: %d, saddr: %d.%d.%d.%d, daddr: %d.%d.%d.%d", nmj->name, nmj->protocol, nmj->ip_version, nmj->saddr>>24, (nmj->saddr>>16)&0x00FF,(nmj->saddr>>8)&0x0000FF, (nmj->saddr)&0x000000FF, nmj->daddr>>24, (nmj->daddr>>16)&0x00FF,(nmj->daddr>>8)&0x0000FF, (nmj->daddr)&0x000000FF);
 		}
 		
-	nl_send_msg(nmj, sizeof(struct nmj_buff));
+	nmj_genl_send_msg(nmj->name);//(char *)nmj, sizeof(struct nmj_buff));
+	printk(KERN_INFO "NMJFilter completeded!");
+	kfree_skb(skb);
 }
 
-static void nl_recv_msg(struct sk_buff *skb)
+void nmj_genl_send_msg(char *msg)
 {
+        struct sk_buff *skb;
+        void *msg_head;
+        int error;
 
-    struct nlmsghdr *nlh;
-    char *inputData = NULL;
+        skb = genlmsg_new(NLMSG_GOODSIZE, GFP_KERNEL);
+        if (!skb) {
+                printk(KERN_INFO "NMJFilter genlmsg_new() failed.\n");
+                goto end;
+        }
 
-    nlh = (struct nlmsghdr *)skb->data;
-    inputData = (char *)nlmsg_data(nlh);
-    
-    inputPid = nlh->nlmsg_pid; /*pid of sending process */
+        msg_head = genlmsg_put(skb, 0, 0, &nmj_family, 0, COMMAND_NMJ);
+        if (!msg_head) {
+                printk(KERN_INFO "NMJFilter genlmsg_put() failed.\n");
+                kfree_skb(skb);
+                goto end;
+        }
 
-    //some things
+        error = nla_put_string(skb, ATTR_NMJSKB, msg);
+        if (error) {
+                printk(KERN_INFO "NMJFilter nla_put_string() failed: %d\n", error);
+                kfree_skb(skb);
+                goto end;
+        }
+
+        genlmsg_end(skb, msg_head);
+
+        /*
+         * The family has only one group, so the group ID is just the family's
+         * group offset.
+         * mcgrp_offset is supposed to be private, so use this value for debug
+         * purposes only.
+         */
+        error = genlmsg_multicast_allns(&nmj_family, skb, 0, 0, GFP_KERNEL);
+        if (error) {
+                printk(KERN_INFO "NMJFilter genlmsg_multicast_allns() failed: %d\n", error);
+                goto end;
+        }
+
+        printk(KERN_INFO "NMJFilter success.\n");
+end:
+        return;
 }
 
-
-
-static int nl_send_msg(void *msg, uint16_t len)
+static int register_nmjfamily(void)
 {
-    struct sk_buff *skb_out;
-    struct nlmsghdr *nlh;
-    int res;
-	
-    skb_out = nlmsg_new(NLMSG_ALIGN(len + 1), GFP_ATOMIC);
-    if (!skb_out) {
-        printk(KERN_ERR "Failed to allocate new skb\n");
-        return -1;
-    }
+        int error;
 
-    nlh = nlmsg_put(skb_out, 0, 1, NLMSG_DONE, len + 1, 0);
-    if(nlh == NULL)
-    {
-        printk("nlmsg_put failaure \n");
-        nlmsg_free(skb_out);
-        return -1;
-    }
-    
-    memcpy(nlmsg_data(nlh), msg, len);
-    ret = netlink_multicast(nl_sk, skb_out, 0, MULTICAST_GROUP, GFP_KERNEL);
-    
-    return res;
+        printk(KERN_INFO "NMJFilter registering family.\n");
+        error = genl_register_family(&nmj_family);
+        if (error)
+                pr_err("NMJFilter family registration failed: %d\n", error);
+
+        return error;
 }
 
 static int __init nmjfilter_init(void)
 {
 
-    printk("Entering: %s\n", __FUNCTION__);
+    printk("Entering NMJFILTER: %s\n", __FUNCTION__);
     
-    struct netlink_kernel_cfg cfg = {
-        .input = nl_recv_msg,
-    };
+    int error;
 
-    nl_sk = netlink_kernel_create(&init_net, NETLINK_USER, &cfg);
-    if (!nl_sk) {
-        printk(KERN_ALERT "Error creating socket.\n");
-        return -10;
-    }
+    error = register_nmjfamily();
+    if (error)
+            return error;
 
     return 0;
 }
