@@ -19,10 +19,10 @@ struct nmj_buff {
 	__be16	source;
 	__be16	dest;
 };
-
+/*
 static int register_nmjfamily(void);
 void nmj_genl_send_msg(char *msg);
-void print_skb_info(struct sk_buff *skb);
-static int receive_msg(struct sk_buff *skb, struct genl_info *info);
-
 static int __init nmjfilter_init(void);
+static int receive_msg(struct sk_buff *skb, struct genl_info *info);*/
+
+void print_skb_info(struct sk_buff *skb);
