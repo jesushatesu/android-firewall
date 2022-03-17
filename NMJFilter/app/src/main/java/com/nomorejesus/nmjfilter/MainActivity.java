@@ -15,9 +15,10 @@ import android.widget.TextView;
 import com.nomorejesus.nmjfilter.databinding.ActivityMainBinding;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements NativeCallListener{
 
 
     // Used to load the 'nmjfilter' library on application startup.
@@ -29,6 +30,13 @@ public class MainActivity extends AppCompatActivity {
     private ActivityMainBinding binding;
     LinearLayout llmain;
     Button btn;
+    ArrayList<String> rcvData;
+
+    @Override
+    public void onNativeStringCall(String arg)
+    {
+        rcvData.add(arg);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,11 +59,12 @@ public class MainActivity extends AppCompatActivity {
 
         //TextView tv1 = binding.textView;
         //tv1.setText(recvmsg());
+        rcvData = new ArrayList<>(100);
         llmain = binding.llmain;
         btn = binding.btn;
         btn.setText("go");
         btn.setOnClickListener(this::onClick);
-        stringFromJNI();
+        stringFromJNI(this);
     }
 
     public void onClick(View v)
@@ -63,16 +72,17 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT);
         int i = 0;
         while (i < 40){
-            recvData(layoutParams);
+            recvData(layoutParams, i);
             i++;
         }
 
     }
 
-    public void recvData(LinearLayout.LayoutParams layoutParams)
+    public void recvData(LinearLayout.LayoutParams layoutParams, int i)
     {
         TextView tv = new TextView(this);
-        tv.setText(recvmsg());
+        recvmsg();
+        tv.setText(rcvData.get(i));
         tv.setLayoutParams(layoutParams);
         tv.setGravity(CENTER_HORIZONTAL);
         llmain.addView(tv);
@@ -82,6 +92,6 @@ public class MainActivity extends AppCompatActivity {
      * A native method that is implemented by the 'nmjfilter' native library,
      * which is packaged with this application.
      */
-    public native String stringFromJNI();
+    public native String stringFromJNI(NativeCallListener nativeCallListener);
     public native String recvmsg();
 }

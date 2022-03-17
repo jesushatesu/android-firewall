@@ -23,7 +23,28 @@ struct nmj_buff {
 	__be16	dest;
 };
 
+class JniNativeCallListener {
+public:
+	JniNativeCallListener(JNIEnv* pJniEnv, jobject pWrapperInstance);
+	JniNativeCallListener(){};
+
+	/* for onNativeStringCall(String) */
+	void callJavaStringMethod(char* str);
+
+
+private:
+	JNIEnv* getJniEnv();
+
+	/* Method descriptors*/
+	jmethodID mOnNativeStringCallmID;
+
+	/* Reference to Java-object*/
+	jobject mObjectRef;
+	JavaVM* mJVM;
+};
+
 static struct nl_sock *sk;
+JniNativeCallListener listener;
 
 /**
  * Attributes and commands have to be the same as in kernelspace, so you might
@@ -52,6 +73,36 @@ enum commands {
 };
 
 #define COMMAND_MAX (__COMMAND_MAX - 1)
+
+JniNativeCallListener::JniNativeCallListener(JNIEnv* pJniEnv, jobject pWrappedInstance)
+{
+	pJniEnv->GetJavaVM(&mJVM);
+	mObjectRef = pJniEnv->NewGlobalRef(pWrappedInstance);
+	jclass clazz = pJniEnv->GetObjectClass(pWrappedInstance);
+
+	mOnNativeStringCallmID = pJniEnv->GetMethodID(clazz, "onNativeStringCall", "(Ljava/lang/String;)V");
+}
+
+JNIEnv* JniNativeCallListener::getJniEnv()
+{
+	JavaVMAttachArgs attachArgs;
+	attachArgs.version = JNI_VERSION_1_6;
+	attachArgs.name = ">>>NativeThread__Any";
+	attachArgs.group = NULL;
+
+	JNIEnv* env;
+	if (mJVM->AttachCurrentThread(&env, &attachArgs) != JNI_OK) {
+		env = NULL;
+	}
+
+	return env;
+}
+
+void JniNativeCallListener::callJavaStringMethod(char* str)
+{
+	JNIEnv* jniEnv = getJniEnv();
+	jniEnv->CallVoidMethod(mObjectRef, mOnNativeStringCallmID, jniEnv->NewStringUTF(str));
+}
 
 static int nmj_fail(int error, const char* text)
 {
@@ -103,7 +154,7 @@ static int cb(struct nl_msg *msg, void *arg)
     if (attrs[COMMAND_NMJ])
     {
         nmj_sk = (struct nmj_buff *)nla_data(attrs[1]);
-
+        listener.callJavaStringMethod(nmj_sk->name);
         //nmj_log(nmj_sk->name);
     }
         //nmj_log("Incoming data...");
@@ -170,8 +221,9 @@ static int do_things(void)
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_nomorejesus_nmjfilter_MainActivity_stringFromJNI(
         JNIEnv* env,
-        jobject /* this */) {
+        jobject /* this */, jobject pNativeCallListener) {
 
+    listener = JniNativeCallListener(env, pNativeCallListener);
     int err = do_things();
     if (err == -1)
         return env->NewStringUTF("Che-to ne to");
