@@ -28,20 +28,17 @@
             android:layout_height="wrap_content"
             tools:ignore="SpeakableTextPresentCheck" />
 
-        <ScrollView
-            android:id="@+id/scrl"
-            android:layout_width="412dp"
-            android:layout_height="643dp"
-            tools:ignore="MissingConstraints,SpeakableTextPresentCheck"
-            tools:layout_editor_absoluteY="88dp">
+        <TextView
+            android:id="@+id/needUpdate"
+            android:layout_width="match_parent"
+            android:layout_height="100px"
+            android:gravity="center" />
 
-            <LinearLayout
-                android:id="@+id/llmain"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
+        <ListView
+            android:id="@+id/lvmain"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
 
-            </LinearLayout>
-        </ScrollView>
+        </ListView>
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

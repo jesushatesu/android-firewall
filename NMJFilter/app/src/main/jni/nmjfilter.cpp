@@ -9,34 +9,28 @@
 #include <netlink/errno.h>
 #include <stddef.h>
 #include <android/log.h>
+#include <arpa/inet.h>
 
 #define LOG_TAG "NativeLog"
-
-struct nmj_buff {
-	char			name[128];
-	__be16			protocol;
-	__u8	ihl:4,
-		ip_version:4;
-	__be32	saddr;
-	__be32	daddr;
-	__be16	source;
-	__be16	dest;
-};
 
 class JniNativeCallListener {
 public:
 	JniNativeCallListener(JNIEnv* pJniEnv, jobject pWrapperInstance);
 	JniNativeCallListener(){};
 
-	/* for onNativeStringCall(String) */
-	void callJavaStringMethod(char* str);
+	/* for onNativeRcvCall(String) */
+	void callJavaRcvMethod(char* str);
+	/* for onNativeSndCall(String) */
+	void callJavaSndMethod(char* str);
 
 
 private:
 	JNIEnv* getJniEnv();
 
 	/* Method descriptors*/
-	jmethodID mOnNativeStringCallmID;
+	jmethodID mOnNativeRcvCallmID;
+	/* Method descriptors*/
+	jmethodID mOnNativeSndCallmID;
 
 	/* Reference to Java-object*/
 	jobject mObjectRef;
@@ -66,8 +60,8 @@ static struct nla_policy nmj_policy[ATTR_MAX + 1] = {
 
 enum commands {
 		COMMAND_UNSPEC,
-        COMMAND_NMJ,
-
+        COMMAND_RCVNMJ,
+        COMMAND_SNDNMJ,
         /* This must be last! */
         __COMMAND_MAX,
 };
@@ -80,7 +74,8 @@ JniNativeCallListener::JniNativeCallListener(JNIEnv* pJniEnv, jobject pWrappedIn
 	mObjectRef = pJniEnv->NewGlobalRef(pWrappedInstance);
 	jclass clazz = pJniEnv->GetObjectClass(pWrappedInstance);
 
-	mOnNativeStringCallmID = pJniEnv->GetMethodID(clazz, "onNativeStringCall", "(Ljava/lang/String;)V");
+	mOnNativeRcvCallmID = pJniEnv->GetMethodID(clazz, "onNativeRcvCall", "(Ljava/lang/String;)V");
+	mOnNativeSndCallmID = pJniEnv->GetMethodID(clazz, "onNativeSndCall", "(Ljava/lang/String;)V");
 }
 
 JNIEnv* JniNativeCallListener::getJniEnv()
@@ -98,10 +93,16 @@ JNIEnv* JniNativeCallListener::getJniEnv()
 	return env;
 }
 
-void JniNativeCallListener::callJavaStringMethod(char* str)
+void JniNativeCallListener::callJavaRcvMethod(char* str)
 {
 	JNIEnv* jniEnv = getJniEnv();
-	jniEnv->CallVoidMethod(mObjectRef, mOnNativeStringCallmID, jniEnv->NewStringUTF(str));
+	jniEnv->CallVoidMethod(mObjectRef, mOnNativeRcvCallmID, jniEnv->NewStringUTF(str));
+}
+
+void JniNativeCallListener::callJavaSndMethod(char* str)
+{
+	JNIEnv* jniEnv = getJniEnv();
+	jniEnv->CallVoidMethod(mObjectRef, mOnNativeSndCallmID, jniEnv->NewStringUTF(str));
 }
 
 static int nmj_fail(int error, const char* text)
@@ -131,7 +132,8 @@ static int cb(struct nl_msg *msg, void *arg)
     nl_hdr = nlmsg_hdr(msg);
     genl_hdr = genlmsg_hdr(nl_hdr);
 
-    if (genl_hdr->cmd != COMMAND_NMJ) {
+    if (genl_hdr->cmd != COMMAND_RCVNMJ && genl_hdr->cmd != COMMAND_SNDNMJ) {
+        //nmj_log("Entering to IF...");
         return 0;   //Oops The message type is not mine; ignoring.
     }
 
@@ -139,25 +141,16 @@ static int cb(struct nl_msg *msg, void *arg)
     if (error)
         return nmj_fail(-1, "Parsing message.");
 
-    /* Remember: attrs[0] is a throwaway. */
-    /*
-    if (attrs[1])
-            printf("ATTR_NMJSKB: len:%u type:%u data:%s\n",
-                            attrs[1]->nla_len,
-                            attrs[1]->nla_type,
-                            (char *)nla_data(attrs[1]));
-    else
-            printf("ATTR_NMJSKB: null\n");
-
-    printf("123");*/
-
-    if (attrs[COMMAND_NMJ])
+    if (attrs[COMMAND_RCVNMJ])
     {
-        nmj_sk = (struct nmj_buff *)nla_data(attrs[1]);
-        listener.callJavaStringMethod(nmj_sk->name);
-        //nmj_log(nmj_sk->name);
+        char* strrcv = (char *)nla_data(attrs[COMMAND_RCVNMJ]);
+        listener.callJavaRcvMethod(strrcv);
     }
-        //nmj_log("Incoming data...");
+    else
+    {
+        char* strsnd = (char *)nla_data(attrs[COMMAND_SNDNMJ]);
+        listener.callJavaSndMethod(strsnd);
+    }
 
     return 0;
 }

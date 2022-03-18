@@ -8,8 +8,10 @@ import androidx.core.app.ActivityCompat;
 import android.Manifest;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.TextView;
 
 import com.nomorejesus.nmjfilter.databinding.ActivityMainBinding;
@@ -28,14 +30,31 @@ public class MainActivity extends AppCompatActivity implements NativeCallListene
     }
 
     private ActivityMainBinding binding;
-    LinearLayout llmain;
+    ListView lvmain;
     Button btn;
     ArrayList<String> rcvData;
+    ArrayList<String> sndData;
+    ArrayAdapter<String> adapter;
 
     @Override
-    public void onNativeStringCall(String arg)
+    public void onNativeRcvCall(String arg)
     {
-        rcvData.add(arg);
+        if(arg.substring(0, 3).equals("nmj".toString()))
+        {
+            sndData.add(arg.substring(4));
+        }
+        else
+        {
+            rcvData.add(arg);
+        }
+
+        TextView tv = binding.needUpdate;
+        tv.setText("have appeared new data");
+    }
+
+    @Override
+    public void onNativeSndCall(String arg) {
+        //sndData.add(arg);
     }
 
     @Override
@@ -60,32 +79,37 @@ public class MainActivity extends AppCompatActivity implements NativeCallListene
         //TextView tv1 = binding.textView;
         //tv1.setText(recvmsg());
         rcvData = new ArrayList<>(100);
-        llmain = binding.llmain;
+        sndData = new ArrayList<>(100);
+        lvmain = binding.lvmain;
+        adapter = new ArrayAdapter<String>(this,
+                android.R.layout.simple_list_item_1, rcvData);
+        lvmain.setAdapter(adapter);
         btn = binding.btn;
-        btn.setText("go");
+        btn.setText("Update");
         btn.setOnClickListener(this::onClick);
         stringFromJNI(this);
+        Thread th = new Thread(() -> {
+            try {
+                while (true){
+                    recvData();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+        th.start();
     }
 
     public void onClick(View v)
     {
-        LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT);
-        int i = 0;
-        while (i < 40){
-            recvData(layoutParams, i);
-            i++;
-        }
-
+        adapter.notifyDataSetChanged();
+        TextView tv = binding.needUpdate;
+        tv.setText("");
     }
 
-    public void recvData(LinearLayout.LayoutParams layoutParams, int i)
+    public void recvData()
     {
-        TextView tv = new TextView(this);
         recvmsg();
-        tv.setText(rcvData.get(i));
-        tv.setLayoutParams(layoutParams);
-        tv.setGravity(CENTER_HORIZONTAL);
-        llmain.addView(tv);
     }
 
     /**
