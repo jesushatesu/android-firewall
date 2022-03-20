@@ -38,6 +38,7 @@ public class MainActivity extends AppCompatActivity{
     final int TASK1_CODE = 1;
     public final static int NEED_UPDATE = 100;
     public final static int UPDATE_DATA = 200;
+    int wasStopped;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,6 +47,7 @@ public class MainActivity extends AppCompatActivity{
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
+        wasStopped = 0;
         PendingIntent pi;
         Intent intent;
         pi = createPendingResult(TASK1_CODE, new Intent(), 0);
@@ -70,6 +72,9 @@ public class MainActivity extends AppCompatActivity{
         switch (v.getId())
         {
             case R.id.btn:
+                ArrayList<String> tmp = MyService.getRcvData();
+                rcvData.clear();
+                rcvData.addAll(tmp);
                 adapter.notifyDataSetChanged();
 
                 TextView tv = binding.needUpdate;
@@ -85,6 +90,7 @@ public class MainActivity extends AppCompatActivity{
     @Override
     protected void onStop() {
         super.onStop();
+        wasStopped = 1;
         PendingIntent pi;
         Intent intent;
         pi = createPendingResult(TASK1_CODE, new Intent(), 0);
@@ -95,11 +101,15 @@ public class MainActivity extends AppCompatActivity{
     @Override
     protected void onResume() {
         super.onResume();
-        PendingIntent pi;
-        Intent intent;
-        pi = createPendingResult(TASK1_CODE, new Intent(), 0);
-        intent = new Intent(this, MyService.class).putExtra(PARAM_PINTENT, pi).putExtra(PARAM_STOP, 0);
-        startService(intent);
+        if (wasStopped == 1)
+        {
+            PendingIntent pi;
+            Intent intent;
+            pi = createPendingResult(TASK1_CODE, new Intent(), 0);
+            intent = new Intent(this, MyService.class).putExtra(PARAM_PINTENT, pi).putExtra(PARAM_STOP, 0);
+            startService(intent);
+            wasStopped = 0;
+        }
     }
 
     @Override
@@ -115,11 +125,14 @@ public class MainActivity extends AppCompatActivity{
         }
         if (resultCode == UPDATE_DATA)
         {
-            String result = data.getStringExtra(PARAM_RESULT);
-            //ArrayList<String> rcvData = data.getStringArrayListExtra(PARAM_RESULT);
+            //String result = data.getStringExtra(PARAM_RESULT);
+            ArrayList<String> tmp = data.getStringArrayListExtra(PARAM_RESULT);
+            rcvData.clear();
+            rcvData.addAll(tmp);
+
             if (requestCode == TASK1_CODE)
             {
-                rcvData.add(result);
+                //rcvData.add(result);
             }
         }
     }
@@ -127,11 +140,11 @@ public class MainActivity extends AppCompatActivity{
     @Override
     protected void onDestroy() {
         super.onDestroy();
-
+        wasStopped = 1;
         PendingIntent pi;
         Intent intent;
         pi = createPendingResult(TASK1_CODE, new Intent(), 0);
         intent = new Intent(this, MyService.class).putExtra(PARAM_PINTENT, pi).putExtra(PARAM_STOP, 1);
-        startService(intent);
+        stopService(intent);
     }
 }

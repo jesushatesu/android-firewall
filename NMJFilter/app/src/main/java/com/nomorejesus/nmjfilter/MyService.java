@@ -8,6 +8,8 @@ import android.util.Log;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MyService extends Service implements NativeCallListener{
     public MyService() {
@@ -17,6 +19,13 @@ public class MyService extends Service implements NativeCallListener{
     static ArrayList<String> sndData;
     PendingIntent pi;
     int stopSending;
+    ExecutorService es;
+    int lastStartId;
+
+    static ArrayList<String> getRcvData()
+    {
+        return rcvData;
+    }
 
     // Used to load the 'nmjfilter' library on application startup.
     static {
@@ -35,7 +44,7 @@ public class MyService extends Service implements NativeCallListener{
                 sndData.add(arg.substring(4));
                 if (stopSending == 0)
                 {
-                    Intent intent = new Intent().putExtra(MainActivity.PARAM_RESULT, arg.substring(4));
+                    Intent intent = new Intent().putExtra(MainActivity.PARAM_RESULT, sndData);
                     pi.send(MyService.this, MainActivity.UPDATE_DATA, intent);
                 }
             }
@@ -44,7 +53,7 @@ public class MyService extends Service implements NativeCallListener{
                 rcvData.add(arg);
                 if(stopSending == 0)
                 {
-                    Intent intent = new Intent().putExtra(MainActivity.PARAM_RESULT, arg);
+                    Intent intent = new Intent().putExtra(MainActivity.PARAM_RESULT, rcvData);
                     pi.send(MyService.this, MainActivity.UPDATE_DATA, intent);
                 }
             }
@@ -63,7 +72,9 @@ public class MyService extends Service implements NativeCallListener{
     {
         rcvData = new ArrayList<>(100);
         sndData = new ArrayList<>(100);
+        lastStartId = 0;
         stringFromJNI(this);
+        es = Executors.newFixedThreadPool(1);
     }
 
     @Override
@@ -74,37 +85,41 @@ public class MyService extends Service implements NativeCallListener{
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-
-        //Log.i("LOG", "startId=" + startId);
+        Log.d("LOG", "start service startId = " + startId);
+        if ((flags&START_FLAG_REDELIVERY) == START_FLAG_REDELIVERY)
+            Log.d("LOG", "START_FLAG_REDELIVERY");
+        if ((flags&START_FLAG_RETRY) == START_FLAG_RETRY)
+            Log.d("LOG", "START_FLAG_RETRY");
+        if (startId > lastStartId)
+            lastStartId = startId;
         pi = intent.getParcelableExtra(MainActivity.PARAM_PINTENT);
         stopSending = intent.getIntExtra(MainActivity.PARAM_STOP, 0);
 
         if (startId == 1){
-            new Thread(new Runnable() {
+            /*new Thread(new Runnable() {
                 @Override
                 public void run() {
+                    Log.d("LOG", "start new thread");
                     while (true){
                         recvData();
                     }
                 }
-            }).start();
-
+            }).start();*/
+            MyRun mr = new MyRun();
+            es.execute(mr);
         }
-/*
-        Thread th = new Thread(() -> {
-            try {
 
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
-        th.start();*/
         return START_STICKY;
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
+        stopSending = 0;
+        /*
+        for (int i = 2; i < lastStartId; i++)
+            stopSelf(i);*/
+        Log.d("LOG", "stop service ");
     }
 
     public void recvData()
@@ -118,4 +133,26 @@ public class MyService extends Service implements NativeCallListener{
      */
     public native String stringFromJNI(NativeCallListener nativeCallListener);
     public native String recvmsg();
+
+    class MyRun implements Runnable{
+
+        public MyRun()
+        {
+
+        }
+
+        public void run()
+        {
+            try
+            {
+                Log.d("LOG", "start new thread");
+                while (true){
+                    recvData();
+                }
+            }catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+        }
+    }
 }
