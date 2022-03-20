@@ -205,14 +205,11 @@ static int do_things(void)
         }
         //nmj_log("Adding group to socket...\n");
 
-        /* Finally, receive the message. */
-        //nl_recvmsgs_default(sk);
-
         return 0;
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_com_nomorejesus_nmjfilter_MainActivity_stringFromJNI(
+Java_com_nomorejesus_nmjfilter_MyService_stringFromJNI(
         JNIEnv* env,
         jobject /* this */, jobject pNativeCallListener) {
 
@@ -225,7 +222,7 @@ Java_com_nomorejesus_nmjfilter_MainActivity_stringFromJNI(
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_com_nomorejesus_nmjfilter_MainActivity_recvmsg(
+Java_com_nomorejesus_nmjfilter_MyService_recvmsg(
         JNIEnv* env,
         jobject /* this */) {
 

@@ -2,10 +2,14 @@ package com.nomorejesus.nmjfilter;
 
 import static android.view.Gravity.CENTER_HORIZONTAL;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
+import android.app.PendingIntent;
+import android.content.ComponentName;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -20,102 +24,114 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 
-public class MainActivity extends AppCompatActivity implements NativeCallListener{
-
-
-    // Used to load the 'nmjfilter' library on application startup.
-    static {
-        System.loadLibrary("nmjfilter");
-        //System.load("/home/jeez/AndroidStudioProjects/NMJFilter/app/src/main/jniLibs/arm64-v8a/libnmjfilter.so");
-    }
+public class MainActivity extends AppCompatActivity{
 
     private ActivityMainBinding binding;
     ListView lvmain;
     Button btn;
-    ArrayList<String> rcvData;
-    ArrayList<String> sndData;
+    Button btn2;
+    static ArrayList<String> rcvData;
     ArrayAdapter<String> adapter;
-
-    @Override
-    public void onNativeRcvCall(String arg)
-    {
-        if(arg.substring(0, 3).equals("nmj".toString()))
-        {
-            sndData.add(arg.substring(4));
-        }
-        else
-        {
-            rcvData.add(arg);
-        }
-
-        TextView tv = binding.needUpdate;
-        tv.setText("have appeared new data");
-    }
-
-    @Override
-    public void onNativeSndCall(String arg) {
-        //sndData.add(arg);
-    }
+    public final static String PARAM_PINTENT = "pendingIntent";
+    public final static String PARAM_STOP = "stop";
+    public final static String PARAM_RESULT = "result";
+    final int TASK1_CODE = 1;
+    public final static int NEED_UPDATE = 100;
+    public final static int UPDATE_DATA = 200;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        /*Thread th = new Thread(() -> {
-            try {
-                Runtime.getRuntime().exec("su");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        });
-        th.start();*/
-        //ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.READ_CONTACTS},100);
+
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        // Example of a call to a native method
-        //TextView tv = binding.sampleText;
-        //tv.setText(stringFromJNI());
+        PendingIntent pi;
+        Intent intent;
+        pi = createPendingResult(TASK1_CODE, new Intent(), 0);
+        intent = new Intent(this, MyService.class).putExtra(PARAM_PINTENT, pi).putExtra(PARAM_STOP, 0);
+        startService(intent);
 
-        //TextView tv1 = binding.textView;
-        //tv1.setText(recvmsg());
         rcvData = new ArrayList<>(100);
-        sndData = new ArrayList<>(100);
         lvmain = binding.lvmain;
         adapter = new ArrayAdapter<String>(this,
                 android.R.layout.simple_list_item_1, rcvData);
         lvmain.setAdapter(adapter);
+
         btn = binding.btn;
+        btn2 = binding.btn2;
         btn.setText("Update");
         btn.setOnClickListener(this::onClick);
-        stringFromJNI(this);
-        Thread th = new Thread(() -> {
-            try {
-                while (true){
-                    recvData();
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
-        th.start();
+        btn2.setOnClickListener(this::onClick);
     }
 
     public void onClick(View v)
     {
-        adapter.notifyDataSetChanged();
-        TextView tv = binding.needUpdate;
-        tv.setText("");
+        switch (v.getId())
+        {
+            case R.id.btn:
+                adapter.notifyDataSetChanged();
+
+                TextView tv = binding.needUpdate;
+                tv.setText("");
+                break;
+            case R.id.btn2:
+                stopService(new Intent(this, MyService.class));
+                break;
+
+        }
     }
 
-    public void recvData()
-    {
-        recvmsg();
+    @Override
+    protected void onStop() {
+        super.onStop();
+        PendingIntent pi;
+        Intent intent;
+        pi = createPendingResult(TASK1_CODE, new Intent(), 0);
+        intent = new Intent(this, MyService.class).putExtra(PARAM_PINTENT, pi).putExtra(PARAM_STOP, 1);
+        startService(intent);
     }
 
-    /**
-     * A native method that is implemented by the 'nmjfilter' native library,
-     * which is packaged with this application.
-     */
-    public native String stringFromJNI(NativeCallListener nativeCallListener);
-    public native String recvmsg();
+    @Override
+    protected void onResume() {
+        super.onResume();
+        PendingIntent pi;
+        Intent intent;
+        pi = createPendingResult(TASK1_CODE, new Intent(), 0);
+        intent = new Intent(this, MyService.class).putExtra(PARAM_PINTENT, pi).putExtra(PARAM_STOP, 0);
+        startService(intent);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == NEED_UPDATE)
+        {
+            if (requestCode == TASK1_CODE)
+            {
+                TextView tv = binding.needUpdate;
+                tv.setText("new data, need update");
+            }
+        }
+        if (resultCode == UPDATE_DATA)
+        {
+            String result = data.getStringExtra(PARAM_RESULT);
+            //ArrayList<String> rcvData = data.getStringArrayListExtra(PARAM_RESULT);
+            if (requestCode == TASK1_CODE)
+            {
+                rcvData.add(result);
+            }
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        PendingIntent pi;
+        Intent intent;
+        pi = createPendingResult(TASK1_CODE, new Intent(), 0);
+        intent = new Intent(this, MyService.class).putExtra(PARAM_PINTENT, pi).putExtra(PARAM_STOP, 1);
+        startService(intent);
+    }
 }
