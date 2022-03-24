@@ -1,44 +1,59 @@
 package com.nomorejesus.nmjfilter;
 
-import static android.view.Gravity.CENTER_HORIZONTAL;
-
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.ViewModel;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
-import android.Manifest;
 import android.app.PendingIntent;
-import android.content.ComponentName;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.LinearLayout;
-import android.widget.ListView;
 import android.widget.TextView;
 
 import com.nomorejesus.nmjfilter.databinding.ActivityMainBinding;
 
-import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
+public class MainActivity extends AppCompatActivity {
 
-public class MainActivity extends AppCompatActivity{
-
-    private ActivityMainBinding binding;
-    ListView lvmain;
-    Button btn;
-    Button btn2;
-    static ArrayList<String> rcvData;
-    ArrayAdapter<String> adapter;
     public final static String PARAM_PINTENT = "pendingIntent";
-    public final static String PARAM_STOP = "stop";
+    public final static String PARAM_ACTIVEONE = "activityOneRdy";
     public final static String PARAM_RESULT = "result";
-    final int TASK1_CODE = 1;
     public final static int NEED_UPDATE = 100;
     public final static int UPDATE_DATA = 200;
+
+    private ActivityMainBinding binding;
+
+    //ListView lvmain;
+    Button btn;
+    Button btn2;
+    List<SkbInfo> rData;
+    List<SkbInfo> sData;
+
+    RecyclerView recyclerView;
+    MyAdapter listAdapter;
+    RecyclerView.LayoutManager rLayoutManager;
+    SkbDao skbDao;
+
+
+    final int TASK1_CODE = 1;
     int wasStopped;
+    Intent intentTwo;
+    Intent intentOne;
+
+    class MyViewModel extends ViewModel {
+        public final LiveData<List<SkbInfo>> usersList;
+        public MyViewModel(SkbDao userDao) {
+            usersList = userDao.allToLiveData();
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,18 +62,28 @@ public class MainActivity extends AppCompatActivity{
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
+        //Database
+        AppDatabase db = App.getInstance().getDatabase();
+        skbDao = db.skbDao();
+        rData = skbDao.loadAllByType(0);
+        sData = skbDao.loadAllByType(1);
+
+        //RecyclerView
+        recyclerView = binding.myRecyclerView;
+        rLayoutManager = new LinearLayoutManager(this);
+        recyclerView.setLayoutManager(rLayoutManager);
+        listAdapter = new MyAdapter(rData);
+        recyclerView.setAdapter(listAdapter);
+
+
         wasStopped = 0;
         PendingIntent pi;
         Intent intent;
         pi = createPendingResult(TASK1_CODE, new Intent(), 0);
-        intent = new Intent(this, MyService.class).putExtra(PARAM_PINTENT, pi).putExtra(PARAM_STOP, 0);
+        intentOne = new Intent(this, this.getClass());
+        intentTwo = new Intent(this, MainActivity2.class);
+        intent = new Intent(this, MyService.class).putExtra(PARAM_PINTENT, pi).putExtra(PARAM_ACTIVEONE, 1);
         startService(intent);
-
-        rcvData = new ArrayList<>(100);
-        lvmain = binding.lvmain;
-        adapter = new ArrayAdapter<String>(this,
-                android.R.layout.simple_list_item_1, rcvData);
-        lvmain.setAdapter(adapter);
 
         btn = binding.btn;
         btn2 = binding.btn2;
@@ -67,23 +92,19 @@ public class MainActivity extends AppCompatActivity{
         btn2.setOnClickListener(this::onClick);
     }
 
-    public void onClick(View v)
-    {
-        switch (v.getId())
-        {
+    public void onClick(@NonNull View v) {
+        switch (v.getId()) {
             case R.id.btn:
-                ArrayList<String> tmp = MyService.getRcvData();
-                rcvData.clear();
-                rcvData.addAll(tmp);
-                adapter.notifyDataSetChanged();
+                rData = skbDao.loadAllByType(0);
+                sData = skbDao.loadAllByType(1);
+                listAdapter.notifyDataSetChanged();
 
                 TextView tv = binding.needUpdate;
                 tv.setText("");
                 break;
             case R.id.btn2:
-                stopService(new Intent(this, MyService.class));
+                startActivity(intentTwo);
                 break;
-
         }
     }
 
@@ -94,19 +115,18 @@ public class MainActivity extends AppCompatActivity{
         PendingIntent pi;
         Intent intent;
         pi = createPendingResult(TASK1_CODE, new Intent(), 0);
-        intent = new Intent(this, MyService.class).putExtra(PARAM_PINTENT, pi).putExtra(PARAM_STOP, 1);
+        intent = new Intent(this, MyService.class).putExtra(PARAM_PINTENT, pi).putExtra(PARAM_ACTIVEONE, 0);
         startService(intent);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        if (wasStopped == 1)
-        {
+        if (wasStopped == 1) {
             PendingIntent pi;
             Intent intent;
             pi = createPendingResult(TASK1_CODE, new Intent(), 0);
-            intent = new Intent(this, MyService.class).putExtra(PARAM_PINTENT, pi).putExtra(PARAM_STOP, 0);
+            intent = new Intent(this, MyService.class).putExtra(PARAM_PINTENT, pi).putExtra(PARAM_ACTIVEONE, 1);
             startService(intent);
             wasStopped = 0;
         }
@@ -115,24 +135,10 @@ public class MainActivity extends AppCompatActivity{
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode == NEED_UPDATE)
-        {
-            if (requestCode == TASK1_CODE)
-            {
+        if (resultCode == NEED_UPDATE) {
+            if (requestCode == TASK1_CODE) {
                 TextView tv = binding.needUpdate;
                 tv.setText("new data, need update");
-            }
-        }
-        if (resultCode == UPDATE_DATA)
-        {
-            //String result = data.getStringExtra(PARAM_RESULT);
-            ArrayList<String> tmp = data.getStringArrayListExtra(PARAM_RESULT);
-            rcvData.clear();
-            rcvData.addAll(tmp);
-
-            if (requestCode == TASK1_CODE)
-            {
-                //rcvData.add(result);
             }
         }
     }
@@ -144,7 +150,7 @@ public class MainActivity extends AppCompatActivity{
         PendingIntent pi;
         Intent intent;
         pi = createPendingResult(TASK1_CODE, new Intent(), 0);
-        intent = new Intent(this, MyService.class).putExtra(PARAM_PINTENT, pi).putExtra(PARAM_STOP, 1);
+        intent = new Intent(this, MyService.class).putExtra(PARAM_PINTENT, pi).putExtra(PARAM_ACTIVEONE, 0);
         stopService(intent);
     }
 }

@@ -38,6 +38,7 @@ private:
 };
 
 static struct nl_sock *sk;
+
 JniNativeCallListener listener;
 
 /**
@@ -208,6 +209,28 @@ static int do_things(void)
         return 0;
 }
 
+static int sendBlock(){
+    int err;
+    int family = genl_ctrl_resolve(sk, "NMJfamily");
+
+    struct nl_msg *msg;
+    if (!(msg = nlmsg_alloc()))
+            nmj_fail(-1, "11111111");
+
+    void *hdr;
+    hdr = genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, family, 0, 0, COMMAND_RCVNMJ, 1);
+    if (!hdr)
+            return nmj_fail(-1, "22222222");
+
+    nla_put_string(msg, ATTR_NMJSKB, "nmjblock NADEUSI ");
+
+    nl_send_sync(sk, msg);
+
+    err = genl_send_simple(sk, family, COMMAND_RCVNMJ, 1, 0);
+
+    return family;
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_nomorejesus_nmjfilter_MyService_stringFromJNI(
         JNIEnv* env,
@@ -215,7 +238,8 @@ Java_com_nomorejesus_nmjfilter_MyService_stringFromJNI(
 
     listener = JniNativeCallListener(env, pNativeCallListener);
     int err = do_things();
-    if (err == -1)
+    int err2 = sendBlock();
+    if (err2 == -1)
         return env->NewStringUTF("Che-to ne to");
 
     return env->NewStringUTF("Vrode vsyo norm");

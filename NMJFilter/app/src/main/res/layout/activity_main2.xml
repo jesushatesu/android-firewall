@@ -14,19 +14,6 @@
         tools:layout_editor_absoluteX="1dp"
         tools:layout_editor_absoluteY="1dp">
 
-        <TextView
-            android:id="@+id/recvData"
-            android:layout_width="match_parent"
-            android:layout_height="100px"
-            android:gravity="center"
-            android:text="Outgoing data" />
-
-        <Button
-            android:id="@+id/btn2"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="To incoming data" />
-
         <Button
             android:id="@+id/btn"
             android:layout_width="match_parent"

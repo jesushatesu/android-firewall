@@ -1,0 +1,46 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "fc4ac2927bc91a438f1196927d1fa552",
+    "entities": [
+      {
+        "tableName": "SkbInfo",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowid` INTEGER NOT NULL, `str_info` TEXT, `type` INTEGER NOT NULL, PRIMARY KEY(`rowid`))",
+        "fields": [
+          {
+            "fieldPath": "uid",
+            "columnName": "rowid",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "str",
+            "columnName": "str_info",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "rowid"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'fc4ac2927bc91a438f1196927d1fa552')"
+    ]
+  }
+}

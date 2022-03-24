@@ -5,26 +5,35 @@ import android.app.Service;
 import android.content.Intent;
 import android.os.IBinder;
 import android.util.Log;
-import android.widget.TextView;
+
+import androidx.annotation.NonNull;
+import androidx.room.Room;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class MyService extends Service implements NativeCallListener{
+public class MyService extends Service implements NativeCallListener {
+
     public MyService() {
     }
 
-    static ArrayList<String> rcvData;
+    static List<String> rcvData;
     static ArrayList<String> sndData;
-    PendingIntent pi;
-    int stopSending;
-    ExecutorService es;
-    int lastStartId;
+    PendingIntent pi1;
+    PendingIntent pi2;
+    int activeOne;
+    int activeTwo;
+    int lastSkbId;
+    SkbDao skbDao;
 
-    static ArrayList<String> getRcvData()
-    {
+    static List<String> getRcvData() {
         return rcvData;
+    }
+
+    static ArrayList<String> getSndData() {
+        return sndData;
     }
 
     // Used to load the 'nmjfilter' library on application startup.
@@ -32,30 +41,31 @@ public class MyService extends Service implements NativeCallListener{
         System.loadLibrary("nmjfilter");
     }
 
-    @Override
-    public void onNativeRcvCall(String arg)
-    {
-        try {
-            if (stopSending == 0)
-                pi.send(MainActivity.NEED_UPDATE);
+    private void skbInsert(String str, int type){
+        lastSkbId++;
+        SkbInfo skb = new SkbInfo();
+        skb.uid = lastSkbId;
+        skb.str = str;
+        skb.type = type;
+        skbDao.insertAll(skb);
+    }
 
-            if(arg.substring(0, 3).equals("nmj".toString()))
-            {
+    @Override
+    public void onNativeRcvCall(@NonNull String arg) {
+        try {
+            if (arg.substring(0, 3).equals("nmj")) {
+                if (activeTwo == 1){
+                    pi2.send(MainActivity2.NEED_UPDATE);
+                }
+                skbInsert(arg.substring(4), 0);
                 sndData.add(arg.substring(4));
-                if (stopSending == 0)
-                {
-                    Intent intent = new Intent().putExtra(MainActivity.PARAM_RESULT, sndData);
-                    pi.send(MyService.this, MainActivity.UPDATE_DATA, intent);
-                }
             }
-            else
-            {
+            else {
+                if (activeOne == 1)
+                    pi1.send(MainActivity.NEED_UPDATE);
+
+                skbInsert(arg, 1);
                 rcvData.add(arg);
-                if(stopSending == 0)
-                {
-                    Intent intent = new Intent().putExtra(MainActivity.PARAM_RESULT, rcvData);
-                    pi.send(MyService.this, MainActivity.UPDATE_DATA, intent);
-                }
             }
         } catch (PendingIntent.CanceledException e) {
             e.printStackTrace();
@@ -68,18 +78,21 @@ public class MyService extends Service implements NativeCallListener{
     }
 
     @Override
-    public void onCreate()
-    {
+    public void onCreate() {
         rcvData = new ArrayList<>(100);
         sndData = new ArrayList<>(100);
-        lastStartId = 0;
+        AppDatabase db = App.getInstance().getDatabase();
+        skbDao = db.skbDao();
+        lastSkbId = skbDao.getNum();
+
         stringFromJNI(this);
-        es = Executors.newFixedThreadPool(1);
+        ExecutorService executorService = Executors.newFixedThreadPool(1);
+        MyRun mr = new MyRun();
+        executorService.execute(mr);
     }
 
     @Override
     public IBinder onBind(Intent intent) {
-        // TODO: Return the communication channel to the service.
         throw new UnsupportedOperationException("Not yet implemented");
     }
 
@@ -90,24 +103,11 @@ public class MyService extends Service implements NativeCallListener{
             Log.d("LOG", "START_FLAG_REDELIVERY");
         if ((flags&START_FLAG_RETRY) == START_FLAG_RETRY)
             Log.d("LOG", "START_FLAG_RETRY");
-        if (startId > lastStartId)
-            lastStartId = startId;
-        pi = intent.getParcelableExtra(MainActivity.PARAM_PINTENT);
-        stopSending = intent.getIntExtra(MainActivity.PARAM_STOP, 0);
 
-        if (startId == 1){
-            /*new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    Log.d("LOG", "start new thread");
-                    while (true){
-                        recvData();
-                    }
-                }
-            }).start();*/
-            MyRun mr = new MyRun();
-            es.execute(mr);
-        }
+        pi1 = intent.getParcelableExtra(MainActivity.PARAM_PINTENT);
+        pi2 = intent.getParcelableExtra(MainActivity2.PARAM_PINTENT);
+        activeOne = intent.getIntExtra(MainActivity.PARAM_ACTIVEONE, 0);
+        activeTwo = intent.getIntExtra(MainActivity2.PARAM_ACTIVETWO, 0);
 
         return START_STICKY;
     }
@@ -115,10 +115,8 @@ public class MyService extends Service implements NativeCallListener{
     @Override
     public void onDestroy() {
         super.onDestroy();
-        stopSending = 0;
-        /*
-        for (int i = 2; i < lastStartId; i++)
-            stopSelf(i);*/
+        activeOne = 0;
+        activeTwo = 0;
         Log.d("LOG", "stop service ");
     }
 
@@ -134,23 +132,18 @@ public class MyService extends Service implements NativeCallListener{
     public native String stringFromJNI(NativeCallListener nativeCallListener);
     public native String recvmsg();
 
-    class MyRun implements Runnable{
+    class MyRun implements Runnable {
 
-        public MyRun()
-        {
-
+        public MyRun() {
         }
 
-        public void run()
-        {
-            try
-            {
+        public void run() {
+            try {
                 Log.d("LOG", "start new thread");
                 while (true){
                     recvData();
                 }
-            }catch (Exception e)
-            {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
