@@ -3,57 +3,40 @@ package com.nomorejesus.nmjfilter;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
-import android.widget.TextView;
 
 import com.nomorejesus.nmjfilter.databinding.ActivityMainBinding;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
     public final static String PARAM_PINTENT = "pendingIntent";
-    public final static String PARAM_ACTIVEONE = "activityOneRdy";
-    public final static String PARAM_RESULT = "result";
-    public final static int NEED_UPDATE = 100;
-    public final static int UPDATE_DATA = 200;
+    public final static String PARAM_RULE = "newRule";
+
+    final int TASK1_CODE = 1;
 
     private ActivityMainBinding binding;
 
-    //ListView lvmain;
-    Button btn;
+    MyListAdapter adapterRcv;
+    MyListAdapter adapterSnd;
+
+    Button btn1;
     Button btn2;
-    List<SkbInfo> rData;
-    List<SkbInfo> sData;
+    Button btn3;
+    Button btn4;
 
     RecyclerView recyclerView;
-    MyAdapter listAdapter;
-    RecyclerView.LayoutManager rLayoutManager;
     SkbDao skbDao;
-
-
-    final int TASK1_CODE = 1;
-    int wasStopped;
-    Intent intentTwo;
-    Intent intentOne;
-
-    class MyViewModel extends ViewModel {
-        public final LiveData<List<SkbInfo>> usersList;
-        public MyViewModel(SkbDao userDao) {
-            usersList = userDao.allToLiveData();
-        }
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,45 +48,67 @@ public class MainActivity extends AppCompatActivity {
         //Database
         AppDatabase db = App.getInstance().getDatabase();
         skbDao = db.skbDao();
-        rData = skbDao.loadAllByType(0);
-        sData = skbDao.loadAllByType(1);
 
-        //RecyclerView
+        //RecyclerView v1.0
         recyclerView = binding.myRecyclerView;
-        rLayoutManager = new LinearLayoutManager(this);
+        RecyclerView.LayoutManager rLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, true);
         recyclerView.setLayoutManager(rLayoutManager);
-        listAdapter = new MyAdapter(rData);
-        recyclerView.setAdapter(listAdapter);
+        MyViewModel viewModel = new ViewModelProvider(this, new MyViewModelProvider(skbDao)).get(MyViewModel.class);
+        adapterRcv = new MyListAdapter();
+        adapterSnd = new MyListAdapter();
+        viewModel.skbListRcv.observe(this, list -> adapterRcv.submitList(list));
+        viewModel.skbListSnd.observe(this, list -> adapterSnd.submitList(list));
+        //recyclerView.setAdapter(adapterRcv);
 
-
-        wasStopped = 0;
         PendingIntent pi;
         Intent intent;
         pi = createPendingResult(TASK1_CODE, new Intent(), 0);
-        intentOne = new Intent(this, this.getClass());
-        intentTwo = new Intent(this, MainActivity2.class);
-        intent = new Intent(this, MyService.class).putExtra(PARAM_PINTENT, pi).putExtra(PARAM_ACTIVEONE, 1);
+        intent = new Intent(this, MyService.class).putExtra(PARAM_PINTENT, pi);
+        Context context = getApplicationContext();
         startService(intent);
+        context.startForegroundService(intent);
 
-        btn = binding.btn;
+        btn1 = binding.btn1;
         btn2 = binding.btn2;
-        btn.setText("Update");
-        btn.setOnClickListener(this::onClick);
+        btn3 = binding.btn3;
+        btn4 = binding.btn4;
+        btn1.setBackgroundColor(Color.rgb(160, 160, 160));
+        btn2.setBackgroundColor(Color.rgb(160, 160, 160));
+        btn3.setBackgroundColor(Color.rgb(160, 160, 160));
+        btn4.setBackgroundColor(Color.rgb(160, 160, 160));
+        btn1.setOnClickListener(this::onClick);
         btn2.setOnClickListener(this::onClick);
+        btn3.setOnClickListener(this::onClick);
+        btn4.setOnClickListener(this::onClick);
+
     }
 
     public void onClick(@NonNull View v) {
         switch (v.getId()) {
-            case R.id.btn:
-                rData = skbDao.loadAllByType(0);
-                sData = skbDao.loadAllByType(1);
-                listAdapter.notifyDataSetChanged();
-
-                TextView tv = binding.needUpdate;
-                tv.setText("");
+            case R.id.btn1:
+                recyclerView.setAdapter(adapterRcv);
+                btn1.setBackgroundColor(Color.rgb(67, 56, 56));
+                btn2.setBackgroundColor(Color.rgb(160, 160, 160));
+                btn3.setBackgroundColor(Color.rgb(160, 160, 160));
+                btn4.setBackgroundColor(Color.rgb(160, 160, 160));
                 break;
             case R.id.btn2:
-                startActivity(intentTwo);
+                recyclerView.setAdapter(adapterSnd);
+                btn1.setBackgroundColor(Color.rgb(160, 160, 160));
+                btn2.setBackgroundColor(Color.rgb(67, 56, 56));
+                btn3.setBackgroundColor(Color.rgb(160, 160, 160));
+                btn4.setBackgroundColor(Color.rgb(160, 160, 160));
+                break;
+            case R.id.btn3:
+                PendingIntent pi;
+                Intent intent;
+                pi = createPendingResult(TASK1_CODE, new Intent(), 0);
+                intent = new Intent(this, MyService.class).putExtra(PARAM_PINTENT, pi).putExtra(PARAM_RULE, "192.168.0.1,192.168.0.2");
+                //startService(intent);
+                //startActivity(intentTwo);
+                break;
+            case R.id.btn4:
+                skbDao.nukeTable();
                 break;
         }
     }
@@ -111,46 +116,20 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
-        wasStopped = 1;
-        PendingIntent pi;
-        Intent intent;
-        pi = createPendingResult(TASK1_CODE, new Intent(), 0);
-        intent = new Intent(this, MyService.class).putExtra(PARAM_PINTENT, pi).putExtra(PARAM_ACTIVEONE, 0);
-        startService(intent);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        if (wasStopped == 1) {
-            PendingIntent pi;
-            Intent intent;
-            pi = createPendingResult(TASK1_CODE, new Intent(), 0);
-            intent = new Intent(this, MyService.class).putExtra(PARAM_PINTENT, pi).putExtra(PARAM_ACTIVEONE, 1);
-            startService(intent);
-            wasStopped = 0;
-        }
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode == NEED_UPDATE) {
-            if (requestCode == TASK1_CODE) {
-                TextView tv = binding.needUpdate;
-                tv.setText("new data, need update");
-            }
-        }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        wasStopped = 1;
-        PendingIntent pi;
-        Intent intent;
-        pi = createPendingResult(TASK1_CODE, new Intent(), 0);
-        intent = new Intent(this, MyService.class).putExtra(PARAM_PINTENT, pi).putExtra(PARAM_ACTIVEONE, 0);
-        stopService(intent);
     }
 }

@@ -10,23 +10,38 @@ import java.util.List;
 
 @Dao
 public interface SkbDao {
-    @Query("SELECT * FROM skbinfo")
-    LiveData<SkbInfo> getAll();
+    @Query("SELECT * FROM skbinfo WHERE type LIKE :type ORDER BY rowid ASC")
+    public abstract LiveData<List<SkbInfo>> getAll(int type);
 
     @Query("SELECT * FROM skbinfo")
-     public abstract LiveData<List<SkbInfo>> allToLiveData();
+    public abstract LiveData<List<SkbInfo>> allToLiveData();
 
     @Query("SELECT COUNT(*) FROM skbinfo")
     int getNum();
 
     @Query("SELECT * FROM skbinfo WHERE rowid IN (:skbIds)")
-    List<SkbInfo> loadAllByIds(int[] skbIds);
+    List<SkbInfo> findByIds(int[] skbIds);
 
     @Query("SELECT * FROM skbinfo WHERE type = :type")
-    List<SkbInfo> loadAllByType(int type);
+    List<SkbInfo> findByType(int type);
 
-    @Query("SELECT * FROM skbinfo WHERE str_info LIKE :first LIMIT 1")
-    SkbInfo findByName(String first);
+    @Query("SELECT * FROM skbinfo WHERE saddr LIKE :first")
+    List<SkbInfo> findBySaddr(String first);
+
+    @Query("SELECT * FROM skbinfo WHERE daddr LIKE :first")
+    List<SkbInfo> findByDaddr(String first);
+
+    @Query("SELECT * FROM skbinfo WHERE pid LIKE :first")
+    List<SkbInfo> findByPid(String first);
+
+    @Query("SELECT * FROM skbinfo WHERE proto LIKE :first")
+    List<SkbInfo> findByProto(String first);
+
+    @Query("SELECT * FROM skbinfo WHERE netdev LIKE :first")
+    List<SkbInfo> findByNetdev(String first);
+
+    //@Query("SELECT * FROM skbinfo WHERE drop LIKE :first")
+    //List<SkbInfo> findByDrop(String first);
 
     @Insert
     void insertAll(SkbInfo... skbs);
@@ -34,4 +49,6 @@ public interface SkbDao {
     @Delete
     void delete(SkbInfo skb);
 
+    @Query("DELETE FROM skbinfo")
+    void nukeTable();
 }

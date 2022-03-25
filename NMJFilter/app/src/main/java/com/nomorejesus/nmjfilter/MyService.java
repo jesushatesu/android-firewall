@@ -1,12 +1,18 @@
 package com.nomorejesus.nmjfilter;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.IBinder;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.core.app.NotificationCompat;
 import androidx.room.Room;
 
 import java.util.ArrayList;
@@ -18,23 +24,7 @@ public class MyService extends Service implements NativeCallListener {
 
     public MyService() {
     }
-
-    static List<String> rcvData;
-    static ArrayList<String> sndData;
-    PendingIntent pi1;
-    PendingIntent pi2;
-    int activeOne;
-    int activeTwo;
-    int lastSkbId;
     SkbDao skbDao;
-
-    static List<String> getRcvData() {
-        return rcvData;
-    }
-
-    static ArrayList<String> getSndData() {
-        return sndData;
-    }
 
     // Used to load the 'nmjfilter' library on application startup.
     static {
@@ -42,10 +32,16 @@ public class MyService extends Service implements NativeCallListener {
     }
 
     private void skbInsert(String str, int type){
-        lastSkbId++;
+        String[] dump = str.split(",");
+        if (dump.length != 6)
+            return;
         SkbInfo skb = new SkbInfo();
-        skb.uid = lastSkbId;
-        skb.str = str;
+        skb.pid = dump[0];
+        skb.saddr = dump[1];
+        skb.daddr = dump[2];
+        skb.netdev = dump[3];
+        skb.proto = dump[4];
+        skb.drop = dump[5];
         skb.type = type;
         skbDao.insertAll(skb);
     }
@@ -54,20 +50,12 @@ public class MyService extends Service implements NativeCallListener {
     public void onNativeRcvCall(@NonNull String arg) {
         try {
             if (arg.substring(0, 3).equals("nmj")) {
-                if (activeTwo == 1){
-                    pi2.send(MainActivity2.NEED_UPDATE);
-                }
                 skbInsert(arg.substring(4), 0);
-                sndData.add(arg.substring(4));
             }
             else {
-                if (activeOne == 1)
-                    pi1.send(MainActivity.NEED_UPDATE);
-
                 skbInsert(arg, 1);
-                rcvData.add(arg);
             }
-        } catch (PendingIntent.CanceledException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -79,11 +67,12 @@ public class MyService extends Service implements NativeCallListener {
 
     @Override
     public void onCreate() {
-        rcvData = new ArrayList<>(100);
-        sndData = new ArrayList<>(100);
         AppDatabase db = App.getInstance().getDatabase();
         skbDao = db.skbDao();
-        lastSkbId = skbDao.getNum();
+
+
+
+
 
         stringFromJNI(this);
         ExecutorService executorService = Executors.newFixedThreadPool(1);
@@ -98,16 +87,36 @@ public class MyService extends Service implements NativeCallListener {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.d("LOG", "start service startId = " + startId);
-        if ((flags&START_FLAG_REDELIVERY) == START_FLAG_REDELIVERY)
-            Log.d("LOG", "START_FLAG_REDELIVERY");
-        if ((flags&START_FLAG_RETRY) == START_FLAG_RETRY)
-            Log.d("LOG", "START_FLAG_RETRY");
+        if (startId == 1){
+            String NOTIFICATION_CHANNEL_ID = "com.nomorejesus.nmjfilter";
+            String channelName = "Background Monitoring Network";
+            NotificationChannel chan = new NotificationChannel(NOTIFICATION_CHANNEL_ID, channelName, NotificationManager.IMPORTANCE_NONE);
+            chan.setLightColor(Color.BLUE);
+            chan.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            manager.createNotificationChannel(chan);
 
-        pi1 = intent.getParcelableExtra(MainActivity.PARAM_PINTENT);
-        pi2 = intent.getParcelableExtra(MainActivity2.PARAM_PINTENT);
-        activeOne = intent.getIntExtra(MainActivity.PARAM_ACTIVEONE, 0);
-        activeTwo = intent.getIntExtra(MainActivity2.PARAM_ACTIVETWO, 0);
+            Intent notificationIntent = new Intent(this, MainActivity.class);
+            PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
+            Notification notification = new Notification.Builder(this, NOTIFICATION_CHANNEL_ID)
+                    .setContentTitle("NMJFilter")
+                    .setContentText("Monitoring")
+                    .setOngoing(true)
+                    .setCategory(Notification.CATEGORY_SERVICE)
+                    .setPriority(Notification.PRIORITY_HIGH)
+                    .setSmallIcon(R.drawable.ic_launcher_foreground)
+                    .setContentIntent(pendingIntent)
+                    .setTicker("1234")
+                    .build();
+            startForeground(123, notification);
+        }
+
+
+        Log.d("LOG", "start service startId = " + startId);
+
+        String rule = intent.getStringExtra(MainActivity.PARAM_RULE);
+        if (rule != null)
+            sendData(rule);
 
         return START_STICKY;
     }
@@ -115,14 +124,16 @@ public class MyService extends Service implements NativeCallListener {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        activeOne = 0;
-        activeTwo = 0;
         Log.d("LOG", "stop service ");
     }
 
     public void recvData()
     {
         recvmsg();
+    }
+    public void sendData(String str)
+    {
+        sndmsg(str);
     }
 
     /**
@@ -131,6 +142,7 @@ public class MyService extends Service implements NativeCallListener {
      */
     public native String stringFromJNI(NativeCallListener nativeCallListener);
     public native String recvmsg();
+    public native String sndmsg(String str);
 
     class MyRun implements Runnable {
 

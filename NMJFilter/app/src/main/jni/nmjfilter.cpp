@@ -209,7 +209,7 @@ static int do_things(void)
         return 0;
 }
 
-static int sendBlock(){
+static int sendBlock(const char* str){
     int err;
     int family = genl_ctrl_resolve(sk, "NMJfamily");
 
@@ -222,10 +222,10 @@ static int sendBlock(){
     if (!hdr)
             return nmj_fail(-1, "22222222");
 
-    nla_put_string(msg, ATTR_NMJSKB, "nmjblock NADEUSI ");
+    nla_put_string(msg, ATTR_NMJSKB, str);
 
     nl_send_sync(sk, msg);
-
+    nmj_log(str);
     err = genl_send_simple(sk, family, COMMAND_RCVNMJ, 1, 0);
 
     return family;
@@ -238,8 +238,7 @@ Java_com_nomorejesus_nmjfilter_MyService_stringFromJNI(
 
     listener = JniNativeCallListener(env, pNativeCallListener);
     int err = do_things();
-    int err2 = sendBlock();
-    if (err2 == -1)
+    if (err == -1)
         return env->NewStringUTF("Che-to ne to");
 
     return env->NewStringUTF("Vrode vsyo norm");
@@ -251,6 +250,18 @@ Java_com_nomorejesus_nmjfilter_MyService_recvmsg(
         jobject /* this */) {
 
     nl_recvmsgs_default(sk);
+
+    return env->NewStringUTF("Vrode vsyo norm1");
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_nomorejesus_nmjfilter_MyService_sndmsg(
+        JNIEnv* env,
+        jobject /* this */, jstring pathObj) {
+    const char * path;
+
+    path = env->GetStringUTFChars(pathObj, 0);
+    int err2 = sendBlock(path);
 
     return env->NewStringUTF("Vrode vsyo norm1");
 }
