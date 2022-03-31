@@ -54,4 +54,5 @@ static int receive_msg(struct sk_buff *skb, struct genl_info *info);*/
 
 int print_skb_info(struct sk_buff *skb);
 int print_sock_info(struct sock* sk);
+void nmj_genl_send_rcvmsg(char *msg);
 //int need_drop(struct sk_buff* skb);

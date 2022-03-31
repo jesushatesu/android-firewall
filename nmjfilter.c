@@ -67,6 +67,7 @@ static int receive_msg(struct sk_buff *skb, struct genl_info *info)
 	struct nlattr *na;
 	char * mydata;
 	char* str = kmalloc(sizeof(char)*64, GFP_KERNEL);
+	char answer[64];
 	
 	//printk("nmjrecv Entering receive_msg\n");
 
@@ -89,6 +90,8 @@ static int receive_msg(struct sk_buff *skb, struct genl_info *info)
 					//printk("nmjblock added new rule: %s\n", mydata);
 					rule_push(&my_rules, str);
 					rules_print_for_each(&my_rules);
+					sprintf(answer, "add %s", str);
+					nmj_genl_send_rcvmsg(answer);
 				}
 				else
 				{
