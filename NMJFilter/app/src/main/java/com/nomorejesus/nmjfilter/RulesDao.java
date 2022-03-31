@@ -10,11 +10,11 @@ import java.util.List;
 
 @Dao
 public interface RulesDao {
-    @Query("SELECT * FROM rules")
-    List<Rules> getAll();
+    @Query("SELECT * FROM rules WHERE isInKernel = 1 ORDER BY rowid DESC")
+    public abstract LiveData<List<Rules>> getAllLive();
 
     @Query("SELECT * FROM rules")
-    public abstract LiveData<List<Rules>> allToLiveData();
+    List<Rules> getAll();
 
     @Query("SELECT COUNT(*) FROM rules")
     int getNum();
@@ -25,10 +25,15 @@ public interface RulesDao {
     @Query("SELECT * FROM rules WHERE rule LIKE :first LIMIT 1")
     Rules findByName(String first);
 
+    @Query("SELECT * FROM rules WHERE rule LIKE :first LIMIT 1")
+    Rules isInTable(String first);
+
     @Insert
     void insertAll(Rules... rules);
 
     @Delete
     void delete(Rules rule);
 
+    @Query("DELETE FROM rules")
+    void nukeTable();
 }

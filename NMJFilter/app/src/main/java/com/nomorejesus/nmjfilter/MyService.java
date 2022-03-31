@@ -25,6 +25,7 @@ public class MyService extends Service implements NativeCallListener {
     public MyService() {
     }
     SkbDao skbDao;
+    RulesDao rulesDao;
 
     // Used to load the 'nmjfilter' library on application startup.
     static {
@@ -52,7 +53,17 @@ public class MyService extends Service implements NativeCallListener {
             if (arg.length() > 4 && arg.substring(0, 3).equals("nmj")) {
                 skbInsert(arg.substring(4), 0);
             }
-            else {
+            else if (arg.substring(0, 3).equals("add")){
+                String subStr = arg.substring(4);
+                Rules tmp = rulesDao.isInTable(subStr);
+                if (tmp == null){
+                    Rules rule = new Rules();
+                    rule.str = subStr;
+                    rule.isIn = 1;
+                    rulesDao.insertAll(rule);
+                }
+            }
+            else{
                 skbInsert(arg, 1);
             }
         } catch (Exception e) {
@@ -70,11 +81,26 @@ public class MyService extends Service implements NativeCallListener {
     public void onCreate() {
         AppDatabase db = App.getInstance().getDatabase();
         skbDao = db.skbDao();
+        rulesDao = db.rulesDao();
 
         stringFromJNI(this);
         ExecutorService executorService = Executors.newFixedThreadPool(1);
         MyRun mr = new MyRun();
         executorService.execute(mr);
+
+        for (Rules one_rule:rulesDao.getAll()
+             ) {
+                Thread thread = new Thread(new Runnable() {
+                    public void run() {
+                        try {
+                            sendData(one_rule.str);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                });
+                thread.start();
+        }
     }
 
     @Override
@@ -114,19 +140,11 @@ public class MyService extends Service implements NativeCallListener {
         String rule = intent.getStringExtra(MainActivity.PARAM_RULE);
         if (rule != null){
             Thread thread = new Thread(new Runnable() {
-                int sended = 0;
                 public void run() {
                     try {
-                        //int i = 0;
-                        //while (sended != 1){
-                            //Thread.sleep(1000);
-                            //if (i == 5){
                                 Log.d("LOG", "rule is " + rule);
                                 int err = sendData(rule);
                                 Log.d("LOG", "sendData returned - " + err);
-                                sended = 1;
-                            //}
-                        //}
                     } catch (Exception e) {
                         e.printStackTrace();
                     }

@@ -31,6 +31,7 @@ public class MainActivity extends AppCompatActivity {
 
     MyListAdapter adapterRcv;
     MyListAdapter adapterSnd;
+    RuleAdapter ruleAdapter;
 
     Button btn1;
     Button btn2;
@@ -39,6 +40,7 @@ public class MainActivity extends AppCompatActivity {
 
     RecyclerView recyclerView;
     SkbDao skbDao;
+    RulesDao rulesDao;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,14 +52,17 @@ public class MainActivity extends AppCompatActivity {
         //Database
         AppDatabase db = App.getInstance().getDatabase();
         skbDao = db.skbDao();
+        rulesDao = db.rulesDao();
 
         //RecyclerView v1.0
         recyclerView = binding.myRecyclerView;
         RecyclerView.LayoutManager rLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, true);
         recyclerView.setLayoutManager(rLayoutManager);
         MyViewModel viewModel = new ViewModelProvider(this, new MyViewModelProvider(skbDao)).get(MyViewModel.class);
+        RuleViewModel ruleModel = new ViewModelProvider(this, new RuleModelFactory(rulesDao)).get(RuleViewModel.class);
         service = new Intent(this, MyService.class);
 
+        //onClick Listeners
         MyListAdapter.OnSkbClickListener skbClickListener = new MyListAdapter.OnSkbClickListener() {
             @Override
             public void onSkbClick(SkbInfo skb) {
@@ -71,10 +76,21 @@ public class MainActivity extends AppCompatActivity {
                         Toast.LENGTH_SHORT).show();
             }
         };
+        RuleAdapter.OnRuleClickListener ruleClickListener = new RuleAdapter.OnRuleClickListener() {
+            @Override
+            public void onRuleClick(Rules rule) {
+                RuleDialogFragment dialog = new RuleDialogFragment(rule, rulesDao);
+                dialog.show(getSupportFragmentManager(), "custom");
+            }
+        };
+
+        //adapters
         adapterRcv = new MyListAdapter(skbClickListener);
         adapterSnd = new MyListAdapter(skbClickListener);
+        ruleAdapter = new RuleAdapter(ruleClickListener);
         viewModel.skbListRcv.observe(this, list -> adapterRcv.submitList(list));
         viewModel.skbListSnd.observe(this, list -> adapterSnd.submitList(list));
+        ruleModel.ruleList.observe(this, list -> ruleAdapter.submitList(list));
 
         PendingIntent pi;
         pi = createPendingResult(TASK1_CODE, new Intent(), 0);
@@ -106,24 +122,26 @@ public class MainActivity extends AppCompatActivity {
                 btn3.setBackgroundColor(Color.rgb(160, 160, 160));
                 btn4.setBackgroundColor(Color.rgb(160, 160, 160));
                 break;
+
             case R.id.btn2:
                 recyclerView.setAdapter(adapterSnd);
                 btn1.setBackgroundColor(Color.rgb(160, 160, 160));
                 btn2.setBackgroundColor(Color.rgb(67, 56, 56));
                 btn3.setBackgroundColor(Color.rgb(160, 160, 160));
                 btn4.setBackgroundColor(Color.rgb(160, 160, 160));
-
                 break;
+
             case R.id.btn3:
-                /*PendingIntent pi;
-                Intent intent;
-                pi = createPendingResult(TASK1_CODE, new Intent(), 0);
-                intent = new Intent(this, MyService.class).putExtra(PARAM_PINTENT, pi).putExtra(PARAM_RULE, "192.168.0.1,192.168.0.2");
-                startService(intent);*/
-
+                recyclerView.setAdapter(ruleAdapter);
+                btn1.setBackgroundColor(Color.rgb(160, 160, 160));
+                btn2.setBackgroundColor(Color.rgb(160, 160, 160));
+                btn3.setBackgroundColor(Color.rgb(67, 56, 56));
+                btn4.setBackgroundColor(Color.rgb(160, 160, 160));
                 break;
+
             case R.id.btn4:
                 skbDao.nukeTable();
+                //rulesDao.nukeTable();
                 break;
         }
     }
