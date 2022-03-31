@@ -1,5 +1,6 @@
 package com.nomorejesus.nmjfilter;
 
+import android.annotation.SuppressLint;
 import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -14,8 +15,16 @@ import androidx.recyclerview.widget.RecyclerView;
 import org.jetbrains.annotations.NotNull;
 
 public class MyListAdapter extends ListAdapter<SkbInfo, MyListAdapter.SkbViewHolder> {
-    public MyListAdapter() {
+
+    interface OnSkbClickListener{
+        void onSkbClick(SkbInfo skb);
+    }
+
+    private final OnSkbClickListener onClickListener;
+
+    public MyListAdapter(OnSkbClickListener OnClickListener) {
         super(SkbInfo.DIFF_CALLBACK);
+        this.onClickListener = OnClickListener;
     }
 
     @NonNull
@@ -49,7 +58,15 @@ public class MyListAdapter extends ListAdapter<SkbInfo, MyListAdapter.SkbViewHol
 
     @Override
     public void onBindViewHolder(SkbViewHolder holder, int position) {
+        SkbInfo skb = getItem(position);
         holder.bindTo(getItem(position));
+        holder.itemView.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v)
+            {
+                onClickListener.onSkbClick(skb);
+            }
+        });
     }
 
 }

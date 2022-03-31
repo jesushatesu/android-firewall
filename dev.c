@@ -4131,6 +4131,7 @@ static int netif_receive_skb_internal(struct sk_buff *skb)
 int netif_receive_skb(struct sk_buff *skb)
 {
 	trace_netif_receive_skb_entry(skb);
+	printk(KERN_INFO "nmjfilter netif_receive_skb");
 
 	return netif_receive_skb_internal(skb);
 }
@@ -4471,14 +4472,18 @@ static gro_result_t napi_skb_finish(gro_result_t ret, struct sk_buff *skb)
 
 gro_result_t napi_gro_receive(struct napi_struct *napi, struct sk_buff *skb)
 {
-	struct sk_buff *nmjskb = skb_clone(skb, GFP_ATOMIC);
+	int drop;
 	
 	trace_napi_gro_receive_entry(skb);
 	
-	//printk(KERN_INFO "nmjfilter trying to print_skb_info()\n");
-	print_skb_info(nmjskb);
+	drop = print_skb_info(skb);
 
 	skb_gro_reset_offset(skb);
+	
+	if (drop){
+		kfree_skb(skb);
+		return GRO_DROP;
+	}
 
 	return napi_skb_finish(dev_gro_receive(napi, skb), skb);
 }

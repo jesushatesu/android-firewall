@@ -49,7 +49,7 @@ public class MyService extends Service implements NativeCallListener {
     @Override
     public void onNativeRcvCall(@NonNull String arg) {
         try {
-            if (arg.substring(0, 3).equals("nmj")) {
+            if (arg.length() > 4 && arg.substring(0, 3).equals("nmj")) {
                 skbInsert(arg.substring(4), 0);
             }
             else {
@@ -62,6 +62,7 @@ public class MyService extends Service implements NativeCallListener {
 
     @Override
     public void onNativeSndCall(String arg) {
+        int i = 0;
         //sndData.add(arg);
     }
 
@@ -69,10 +70,6 @@ public class MyService extends Service implements NativeCallListener {
     public void onCreate() {
         AppDatabase db = App.getInstance().getDatabase();
         skbDao = db.skbDao();
-
-
-
-
 
         stringFromJNI(this);
         ExecutorService executorService = Executors.newFixedThreadPool(1);
@@ -115,8 +112,29 @@ public class MyService extends Service implements NativeCallListener {
         Log.d("LOG", "start service startId = " + startId);
 
         String rule = intent.getStringExtra(MainActivity.PARAM_RULE);
-        if (rule != null)
-            sendData(rule);
+        if (rule != null){
+            Thread thread = new Thread(new Runnable() {
+                int sended = 0;
+                public void run() {
+                    try {
+                        //int i = 0;
+                        //while (sended != 1){
+                            //Thread.sleep(1000);
+                            //if (i == 5){
+                                Log.d("LOG", "rule is " + rule);
+                                int err = sendData(rule);
+                                Log.d("LOG", "sendData returned - " + err);
+                                sended = 1;
+                            //}
+                        //}
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+            thread.start();
+        }
+
 
         return START_STICKY;
     }
@@ -131,9 +149,10 @@ public class MyService extends Service implements NativeCallListener {
     {
         recvmsg();
     }
-    public void sendData(String str)
+    public int sendData(String str)
     {
-        sndmsg(str);
+        int ret = sndmsg(str);
+        return ret;
     }
 
     /**
@@ -142,7 +161,7 @@ public class MyService extends Service implements NativeCallListener {
      */
     public native String stringFromJNI(NativeCallListener nativeCallListener);
     public native String recvmsg();
-    public native String sndmsg(String str);
+    public native int sndmsg(String str);
 
     class MyRun implements Runnable {
 

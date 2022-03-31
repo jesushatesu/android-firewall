@@ -6,6 +6,9 @@
 #include <netlink/msg.h>
 #include <netlink/genl/genl.h>
 #include <netlink/genl/ctrl.h>
+#include <netlink/genl/family.h>
+#include <netlink/genl/mngt.h>
+#include <netlink/utils.h>
 #include <netlink/errno.h>
 #include <stddef.h>
 #include <android/log.h>
@@ -132,7 +135,6 @@ static int cb(struct nl_msg *msg, void *arg)
 
     nl_hdr = nlmsg_hdr(msg);
     genl_hdr = genlmsg_hdr(nl_hdr);
-
     if (genl_hdr->cmd != COMMAND_RCVNMJ && genl_hdr->cmd != COMMAND_SNDNMJ) {
         //nmj_log("Entering to IF...");
         return 0;   //Oops The message type is not mine; ignoring.
@@ -211,24 +213,24 @@ static int do_things(void)
 
 static int sendBlock(const char* str){
     int err;
-    int family = genl_ctrl_resolve(sk, "NMJfamily");
+    int family_id = 27;//genl_ctrl_resolve(sk, "NMJfamily");
 
     struct nl_msg *msg;
     if (!(msg = nlmsg_alloc()))
-            nmj_fail(-1, "11111111");
+            return -1;//nmj_fail(-1, "11111111");
 
     void *hdr;
-    hdr = genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, family, 0, 0, COMMAND_RCVNMJ, 1);
+    hdr = genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, family_id, 0, 0, COMMAND_RCVNMJ, 1);
     if (!hdr)
-            return nmj_fail(-1, "22222222");
+            return -1;//nmj_fail(-1, "22222222");
 
     nla_put_string(msg, ATTR_NMJSKB, str);
 
-    nl_send_sync(sk, msg);
-    nmj_log(str);
-    err = genl_send_simple(sk, family, COMMAND_RCVNMJ, 1, 0);
+    err = nl_send_sync(sk, msg);
+    //nmj_log(str);
+    //err = genl_send_simple(sk, family_id, COMMAND_RCVNMJ, 1, 0);
 
-    return family;
+    return family_id;
 }
 
 extern "C" JNIEXPORT jstring JNICALL
@@ -254,14 +256,13 @@ Java_com_nomorejesus_nmjfilter_MyService_recvmsg(
     return env->NewStringUTF("Vrode vsyo norm1");
 }
 
-extern "C" JNIEXPORT jstring JNICALL
+extern "C" JNIEXPORT jint JNICALL
 Java_com_nomorejesus_nmjfilter_MyService_sndmsg(
         JNIEnv* env,
         jobject /* this */, jstring pathObj) {
     const char * path;
-
     path = env->GetStringUTFChars(pathObj, 0);
     int err2 = sendBlock(path);
 
-    return env->NewStringUTF("Vrode vsyo norm1");
+    return err2;
 }

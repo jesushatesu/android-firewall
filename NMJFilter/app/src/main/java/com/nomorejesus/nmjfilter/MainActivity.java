@@ -15,6 +15,7 @@ import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
 import com.nomorejesus.nmjfilter.databinding.ActivityMainBinding;
 
@@ -26,6 +27,7 @@ public class MainActivity extends AppCompatActivity {
     final int TASK1_CODE = 1;
 
     private ActivityMainBinding binding;
+    Intent service;
 
     MyListAdapter adapterRcv;
     MyListAdapter adapterSnd;
@@ -54,19 +56,31 @@ public class MainActivity extends AppCompatActivity {
         RecyclerView.LayoutManager rLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, true);
         recyclerView.setLayoutManager(rLayoutManager);
         MyViewModel viewModel = new ViewModelProvider(this, new MyViewModelProvider(skbDao)).get(MyViewModel.class);
-        adapterRcv = new MyListAdapter();
-        adapterSnd = new MyListAdapter();
+        service = new Intent(this, MyService.class);
+
+        MyListAdapter.OnSkbClickListener skbClickListener = new MyListAdapter.OnSkbClickListener() {
+            @Override
+            public void onSkbClick(SkbInfo skb) {
+                PendingIntent pi;
+                pi = createPendingResult(TASK1_CODE, new Intent(), 0);
+                String saddr = skb.saddr.split(":")[0];
+                String daddr = skb.daddr.split(":")[0];
+                startService(service.putExtra(PARAM_PINTENT, pi).putExtra(PARAM_RULE, saddr + "," + daddr));
+
+                Toast.makeText(getApplicationContext(), "saddr - " + skb.saddr + "\ndaddr - " + skb.daddr,
+                        Toast.LENGTH_SHORT).show();
+            }
+        };
+        adapterRcv = new MyListAdapter(skbClickListener);
+        adapterSnd = new MyListAdapter(skbClickListener);
         viewModel.skbListRcv.observe(this, list -> adapterRcv.submitList(list));
         viewModel.skbListSnd.observe(this, list -> adapterSnd.submitList(list));
-        //recyclerView.setAdapter(adapterRcv);
 
         PendingIntent pi;
-        Intent intent;
         pi = createPendingResult(TASK1_CODE, new Intent(), 0);
-        intent = new Intent(this, MyService.class).putExtra(PARAM_PINTENT, pi);
         Context context = getApplicationContext();
-        startService(intent);
-        context.startForegroundService(intent);
+        startService(service.putExtra(PARAM_PINTENT, pi));
+        context.startForegroundService(service);
 
         btn1 = binding.btn1;
         btn2 = binding.btn2;
@@ -98,14 +112,15 @@ public class MainActivity extends AppCompatActivity {
                 btn2.setBackgroundColor(Color.rgb(67, 56, 56));
                 btn3.setBackgroundColor(Color.rgb(160, 160, 160));
                 btn4.setBackgroundColor(Color.rgb(160, 160, 160));
+
                 break;
             case R.id.btn3:
-                PendingIntent pi;
+                /*PendingIntent pi;
                 Intent intent;
                 pi = createPendingResult(TASK1_CODE, new Intent(), 0);
                 intent = new Intent(this, MyService.class).putExtra(PARAM_PINTENT, pi).putExtra(PARAM_RULE, "192.168.0.1,192.168.0.2");
-                //startService(intent);
-                //startActivity(intentTwo);
+                startService(intent);*/
+
                 break;
             case R.id.btn4:
                 skbDao.nukeTable();

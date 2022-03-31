@@ -17,7 +17,9 @@
   /home/jeez/AndroidStudioProjects/NMJFilter/app/src/main/jni/prebuild/include/libnl3/netlink/data.h \
   /home/jeez/AndroidStudioProjects/NMJFilter/app/src/main/jni/prebuild/include/libnl3/netlink/genl/genl.h \
   /home/jeez/AndroidStudioProjects/NMJFilter/app/src/main/jni/prebuild/include/libnl3/netlink/genl/ctrl.h \
-  /home/jeez/AndroidStudioProjects/NMJFilter/app/src/main/jni/prebuild/include/libnl3/netlink/cache.h
+  /home/jeez/AndroidStudioProjects/NMJFilter/app/src/main/jni/prebuild/include/libnl3/netlink/cache.h \
+  /home/jeez/AndroidStudioProjects/NMJFilter/app/src/main/jni/prebuild/include/libnl3/netlink/genl/family.h \
+  /home/jeez/AndroidStudioProjects/NMJFilter/app/src/main/jni/prebuild/include/libnl3/netlink/genl/mngt.h
 
 /home/jeez/AndroidStudioProjects/NMJFilter/app/src/main/jni/prebuild/include/libnl3/netlink/netlink.h:
 
@@ -54,3 +56,7 @@
 /home/jeez/AndroidStudioProjects/NMJFilter/app/src/main/jni/prebuild/include/libnl3/netlink/genl/ctrl.h:
 
 /home/jeez/AndroidStudioProjects/NMJFilter/app/src/main/jni/prebuild/include/libnl3/netlink/cache.h:
+
+/home/jeez/AndroidStudioProjects/NMJFilter/app/src/main/jni/prebuild/include/libnl3/netlink/genl/family.h:
+
+/home/jeez/AndroidStudioProjects/NMJFilter/app/src/main/jni/prebuild/include/libnl3/netlink/genl/mngt.h:

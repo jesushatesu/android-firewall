@@ -10,7 +10,7 @@ import java.util.List;
 
 @Dao
 public interface SkbDao {
-    @Query("SELECT * FROM skbinfo WHERE type LIKE :type ORDER BY rowid ASC")
+    @Query("SELECT * FROM skbinfo WHERE type LIKE :type ORDER BY rowid DESC")
     public abstract LiveData<List<SkbInfo>> getAll(int type);
 
     @Query("SELECT * FROM skbinfo")
